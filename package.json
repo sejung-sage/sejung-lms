@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "review:codex": "node scripts/codex-review-trigger.js"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.0",
