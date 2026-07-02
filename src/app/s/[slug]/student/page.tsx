@@ -1,11 +1,11 @@
 import { notFound } from "next/navigation";
 import { getSpaceBySlug } from "@/lib/spaces";
-import { getDashboard } from "@/lib/dashboard";
-import { TeacherDashboard } from "@/components/TeacherDashboard";
+import { getStudentHome } from "@/lib/student";
+import { StudentHome } from "@/components/student/StudentHome";
 
 export const dynamic = "force-dynamic";
 
-export default async function SpacePage({
+export default async function StudentPage({
   params,
 }: {
   params: Promise<{ slug: string }>;
@@ -15,11 +15,13 @@ export default async function SpacePage({
 
   if (!space) notFound();
 
-  const dashboard = await getDashboard({
+  const data = await getStudentHome({
     name: space.name,
     subject: space.subject,
     slug,
   });
 
-  return <TeacherDashboard space={space} slug={slug} data={dashboard} />;
+  if (!data) notFound();
+
+  return <StudentHome space={space} slug={slug} data={data} />;
 }

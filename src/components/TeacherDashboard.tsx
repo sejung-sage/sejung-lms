@@ -40,9 +40,11 @@ function Badge({ label }: { label: string }) {
 
 export function TeacherDashboard({
   space,
+  slug,
   data,
 }: {
   space: SpaceDetail;
+  slug: string;
   data: Dashboard;
 }) {
   const accent = space.accent_color;
@@ -67,9 +69,17 @@ export function TeacherDashboard({
       >
         {/* 은은한 광택 */}
         <div className="pointer-events-none absolute -right-10 -top-16 h-48 w-48 rounded-full bg-white/15 blur-2xl" />
-        <Link href="/" className="relative text-sm text-white/80 transition hover:text-white">
-          ← 세정학원
-        </Link>
+        <div className="relative flex items-center justify-between">
+          <Link href="/" className="text-sm text-white/80 transition hover:text-white">
+            ← 세정학원
+          </Link>
+          <Link
+            href={`/s/${slug}/student`}
+            className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold backdrop-blur transition hover:bg-white/30"
+          >
+            학생 앱 보기 →
+          </Link>
+        </div>
         <div className="relative mt-4 flex items-center gap-3.5">
           <div className="flex size-14 items-center justify-center rounded-[26%] bg-white/25 text-2xl font-bold shadow-inner ring-1 ring-white/30 backdrop-blur">
             {initial}
