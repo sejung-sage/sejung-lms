@@ -1,23 +1,8 @@
-import { createAdminClient } from "@/lib/supabase/admin";
-import { TeacherIcon, type TeacherSpace } from "@/components/TeacherIcon";
+import { getSpaces } from "@/lib/spaces";
+import { TeacherIcon } from "@/components/TeacherIcon";
 
 // 런처는 실시간 공간 목록 → 요청 시마다 렌더 (빌드 프리렌더 X)
 export const dynamic = "force-dynamic";
-
-async function getSpaces(): Promise<TeacherSpace[]> {
-  const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from("teacher_spaces")
-    .select("id, name, subject, slug, accent_color, icon_url")
-    .eq("is_active", true)
-    .order("sort_order", { ascending: true });
-
-  if (error) {
-    console.error("[HM] teacher_spaces 조회 실패:", error.message);
-    return [];
-  }
-  return data ?? [];
-}
 
 export default async function Home() {
   const spaces = await getSpaces();

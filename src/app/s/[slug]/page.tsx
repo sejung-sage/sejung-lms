@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { getSpaceBySlug } from "@/lib/spaces";
 
 export const dynamic = "force-dynamic";
 
@@ -10,13 +10,7 @@ export default async function SpacePage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const supabase = createAdminClient();
-  const { data: space } = await supabase
-    .from("teacher_spaces")
-    .select("name, subject, accent_color")
-    .eq("slug", slug)
-    .eq("is_active", true)
-    .maybeSingle();
+  const space = await getSpaceBySlug(slug);
 
   if (!space) notFound();
 
