@@ -24,6 +24,27 @@ const PROGRESS: Record<string, string> = {
   화학: "산화·환원 반응",
 };
 
+export type StudentGrade = {
+  weekly: { label: string; score: number; percentile: number }[];
+  examTrend: { labels: string[]; points: number[] };
+  progress: { percent: number; current: string; incomplete: string };
+};
+
+export function mockStudentGrade(space: { subject: string | null }): StudentGrade {
+  const subject = space.subject ?? "정규";
+  return {
+    weekly: [
+      { label: `${subject} 8주차`, score: 82, percentile: 12 },
+      { label: `${subject} 7주차`, score: 78, percentile: 18 },
+    ],
+    examTrend: {
+      labels: ["1회", "2회", "3회", "4회", "5회", "6회", "7회", "8회", "9회"],
+      points: [72, 76, 88, 84, 80, 93, 90, 95, 89],
+    },
+    progress: { percent: 96, current: "8회차 진행 중", incomplete: "6회차" },
+  };
+}
+
 export function mockStudentHome(space: {
   name: string;
   subject: string | null;

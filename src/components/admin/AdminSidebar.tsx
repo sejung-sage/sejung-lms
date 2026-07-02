@@ -1,6 +1,5 @@
 import Link from "next/link";
 
-/* 간단한 라인 아이콘 세트 */
 function Ic({ d, size = 18 }: { d: string; size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
@@ -21,45 +20,48 @@ const ICON = {
   video: "M15 10l5-3v10l-5-3z|M3 6h12v12H3z",
 };
 
-type Item = { label: string; icon: keyof typeof ICON; active?: boolean };
+export type NavKey =
+  | "dash" | "attendance" | "homework" | "makeup"
+  | "students" | "approvals" | "grades" | "videos";
+
+type Item = { key: NavKey; label: string; icon: keyof typeof ICON; href: string };
 type Group = { title?: string; items: Item[] };
 
-const NAV: Group[] = [
-  { items: [{ label: "대시보드", icon: "dash", active: true }] },
-  { title: "수업 현장", items: [
-    { label: "출석 관리", icon: "check" },
-    { label: "숙제 관리", icon: "book" },
-    { label: "보강 관리", icon: "refresh" },
-  ] },
-  { title: "학생", items: [
-    { label: "학생 목록", icon: "users" },
-    { label: "계정 승인", icon: "badge" },
-  ] },
-  { title: "학습 관리", items: [
-    { label: "성적", icon: "chart" },
-    { label: "영상 관리", icon: "video" },
-  ] },
-];
+function nav(slug: string): Group[] {
+  const a = `/s/${slug}/admin`;
+  return [
+    { items: [{ key: "dash", label: "대시보드", icon: "dash", href: `/s/${slug}` }] },
+    { title: "수업 현장", items: [
+      { key: "attendance", label: "출석 관리", icon: "check", href: `${a}/attendance` },
+      { key: "homework", label: "숙제 관리", icon: "book", href: `${a}/homework` },
+      { key: "makeup", label: "보강 관리", icon: "refresh", href: `${a}/makeup` },
+    ] },
+    { title: "학생", items: [
+      { key: "students", label: "학생 목록", icon: "users", href: `${a}/students` },
+      { key: "approvals", label: "계정 승인", icon: "badge", href: `${a}/approvals` },
+    ] },
+    { title: "학습 관리", items: [
+      { key: "grades", label: "성적", icon: "chart", href: `${a}/grades` },
+      { key: "videos", label: "영상 관리", icon: "video", href: `${a}/videos` },
+    ] },
+  ];
+}
 
 export function AdminSidebar({
-  spaceName,
-  subject,
-  accent,
-  initial,
+  slug, spaceName, subject, accent, initial, active,
 }: {
+  slug: string;
   spaceName: string;
   subject: string | null;
   accent: string;
   initial: string;
+  active: NavKey;
 }) {
   return (
     <aside className="hidden w-60 shrink-0 flex-col bg-slate-900 text-slate-300 md:flex">
-      {/* 로고 */}
       <div className="flex items-center gap-2.5 px-5 py-5">
-        <div
-          className="flex size-9 items-center justify-center rounded-xl text-sm font-bold text-white shadow"
-          style={{ background: `linear-gradient(145deg, ${accent}, ${accent}bb)` }}
-        >
+        <div className="flex size-9 items-center justify-center rounded-xl text-sm font-bold text-white shadow"
+          style={{ background: `linear-gradient(145deg, ${accent}, ${accent}bb)` }}>
           {initial}
         </div>
         <div className="min-w-0 leading-tight">
@@ -68,51 +70,46 @@ export function AdminSidebar({
         </div>
       </div>
 
-      {/* 네비 */}
       <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-2">
-        {NAV.map((g, gi) => (
+        {nav(slug).map((g, gi) => (
           <div key={gi}>
             {g.title && (
-              <div className="px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                {g.title}
-              </div>
+              <div className="px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">{g.title}</div>
             )}
             <ul className="space-y-0.5">
-              {g.items.map((it) => (
-                <li key={it.label}>
-                  <button
-                    className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition ${
-                      it.active
-                        ? "font-semibold text-white"
-                        : "text-slate-300 hover:bg-white/5 hover:text-white"
-                    }`}
-                    style={it.active ? { backgroundColor: `${accent}33` } : undefined}
-                  >
-                    <span style={it.active ? { color: accent } : undefined}>
-                      <Ic d={ICON[it.icon]} />
-                    </span>
-                    {it.label}
-                  </button>
-                </li>
-              ))}
+              {g.items.map((it) => {
+                const on = it.key === active;
+                return (
+                  <li key={it.key}>
+                    <Link
+                      href={it.href}
+                      className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition ${
+                        on ? "font-semibold text-white" : "text-slate-300 hover:bg-white/5 hover:text-white"
+                      }`}
+                      style={on ? { backgroundColor: `${accent}33` } : undefined}
+                      aria-current={on ? "page" : undefined}
+                    >
+                      <span style={on ? { color: accent } : undefined}><Ic d={ICON[it.icon]} /></span>
+                      {it.label}
+                    </Link>
+                  </li>
+                );
+              })}
             </ul>
           </div>
         ))}
       </nav>
 
-      {/* 하단 사용자 */}
       <div className="border-t border-white/5 px-4 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="flex size-8 items-center justify-center rounded-full bg-white/10 text-xs font-bold text-white">
-              원
-            </div>
+            <div className="flex size-8 items-center justify-center rounded-full bg-white/10 text-xs font-bold text-white">원</div>
             <div className="text-xs">
               <div className="font-semibold text-white">목데이터 원장</div>
               <div className="text-slate-500">실장</div>
             </div>
           </div>
-          <Link href="/" className="text-slate-500 transition hover:text-white" title="로그아웃/홈">
+          <Link href="/" className="text-slate-500 transition hover:text-white" title="홈으로">
             <Ic d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4|M16 17l5-5-5-5|M21 12H9" size={17} />
           </Link>
         </div>

@@ -1,4 +1,4 @@
-import { mockStudentHome, type StudentHome } from "@/lib/mock/student";
+import { mockStudentHome, mockStudentGrade, type StudentHome, type StudentGrade } from "@/lib/mock/student";
 
 /**
  * SA 학생앱 데이터 seam.
@@ -17,4 +17,13 @@ export async function getStudentHome(space: {
   return null;
 }
 
-export type { StudentHome };
+export async function getStudentGrade(space: {
+  name: string;
+  subject: string | null;
+  slug: string | null;
+}): Promise<StudentGrade | null> {
+  if (useMock) return mockStudentGrade(space);
+  return null;
+}
+
+export type { StudentHome, StudentGrade };
