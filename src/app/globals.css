@@ -1,8 +1,12 @@
 @import "tailwindcss";
 
+/* dark: 변형을 클래스 기반으로 전환 → 시스템 다크모드로 까매지지 않음.
+   나중에 <html class="dark"> 붙이면 다크 테마 활성화 가능. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f6f5fb;
+  --foreground: #1e2233;
 }
 
 @theme inline {
@@ -12,15 +16,8 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }

@@ -8,6 +8,7 @@ export type Dashboard = {
   gradeSummary: { label: string; value: number; unit: "점" | "%" }[];
   clinics: { student: string; reason: string; status: "신청" | "승인" | "완료" }[];
   notices: { title: string; date: string }[];
+  approvals: { student: string; info: string; channel: string; at: string }[];
 };
 
 // 과목별 성적 항목 라벨 (PRD 15p GLORIA: 단어/문법/숙제완성도)
@@ -56,6 +57,10 @@ export function mockDashboard(space: { name: string; subject: string | null; slu
       { title: "이번 주 토요일 9시 정규수업 안내", date: "07-04" },
       { title: "9회차 단어시험 범위 공지", date: "07-02" },
       { title: "7월 클리닉 신청 오픈", date: "07-01" },
+    ],
+    approvals: [
+      { student: "정예진", info: "앱 예약 · 주관식 재시험", channel: "앱", at: "07-01 10:35" },
+      { student: "한지호", info: "신규 가입 승인 대기", channel: "앱", at: "07-01 09:12" },
     ],
   };
 }

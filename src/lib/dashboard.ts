@@ -13,6 +13,7 @@ const EMPTY: Dashboard = {
   gradeSummary: [],
   clinics: [],
   notices: [],
+  approvals: [],
 };
 
 export async function getDashboard(space: {
