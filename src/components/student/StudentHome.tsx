@@ -2,14 +2,17 @@ import type { StudentHome as StudentHomeData } from "@/lib/student";
 import type { SpaceDetail } from "@/lib/spaces";
 import { QrGlyph } from "./QrGlyph";
 import { StudentFrame } from "./StudentFrame";
+import { Button } from "@/components/ui/Button";
+import { Card, Badge } from "@/components/ui/Card";
 
-const card =
-  "rounded-3xl bg-white/90 shadow-[0_8px_30px_-14px_rgba(60,50,120,0.18)] ring-1 ring-black/[0.04]";
-
-function CheckBox({ done, accent }: { done: boolean; accent: string }) {
+/** 토스식 체크: 완료면 파란 원 + 흰 체크, 아니면 회색 테두리 원 */
+function CheckCircle({ done }: { done: boolean }) {
   return (
-    <span className="flex size-5 items-center justify-center rounded-md border-2 text-white transition"
-      style={done ? { backgroundColor: accent, borderColor: accent } : { borderColor: "#d4d4d8" }}>
+    <span
+      className={`flex size-[22px] shrink-0 items-center justify-center rounded-full transition-colors ${
+        done ? "bg-blue-500 text-white" : "border-[1.5px] border-grey-300 bg-white"
+      }`}
+    >
       {done && (
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
           <path d="M20 6 9 17l-5-5" />
@@ -19,94 +22,122 @@ function CheckBox({ done, accent }: { done: boolean; accent: string }) {
   );
 }
 
+function SectionHeading({ children, right }: { children: React.ReactNode; right?: React.ReactNode }) {
+  return (
+    <div className="flex items-end justify-between px-1 pb-1 pt-3">
+      <h3 className="text-[17px] font-bold text-grey-900">{children}</h3>
+      {right && <span className="text-[13px] text-grey-500">{right}</span>}
+    </div>
+  );
+}
+
+const InfoRow = ({ label, value }: { label: string; value: string }) => (
+  <div className="flex items-center justify-between py-1.5">
+    <span className="text-[14px] text-grey-500">{label}</span>
+    <span className="text-[14px] font-medium text-grey-800">{value}</span>
+  </div>
+);
+
 export function StudentHome({ space, slug, data }: { space: SpaceDetail; slug: string; data: StudentHomeData }) {
-  const accent = space.accent_color;
   const w = data.thisWeek;
+  const doneCount = data.homework.filter((h) => h.done).length;
 
   return (
     <StudentFrame space={space} slug={slug} active="home">
-      {/* 수업 카드 */}
-      <section className="relative overflow-hidden rounded-3xl px-5 py-5 text-white shadow-lg"
-        style={{ background: `linear-gradient(135deg, ${accent} 0%, ${accent}cc 60%, ${accent}aa 100%)` }}>
-        <div className="pointer-events-none absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/15 blur-2xl" />
-        <div className="relative flex items-start justify-between">
-          <div>
-            <span className="rounded-full bg-white/25 px-2.5 py-0.5 text-[11px] font-semibold backdrop-blur">{w.tag}</span>
-            <h2 className="mt-2.5 text-lg font-bold leading-snug">{w.title}</h2>
+      {/* 오늘/이번 주 수업 — 토스 메인 카드처럼 흰 배경 + 큰 볼드 + 파란 CTA 하나 */}
+      <Card>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <Badge tone="blue">{w.tag}</Badge>
+            <h2 className="mt-2 text-[22px] font-bold leading-tight tracking-[-0.03em] text-grey-900">
+              {w.title}
+            </h2>
           </div>
-          <button className="flex flex-col items-center gap-1 rounded-2xl bg-white p-2.5 shadow-md">
+          <div className="flex size-14 shrink-0 items-center justify-center rounded-[14px] bg-grey-50">
             <QrGlyph />
-            <span className="text-[10px] font-bold text-slate-500">등원 QR</span>
-          </button>
+          </div>
         </div>
-        <dl className="relative mt-4 space-y-1.5 text-sm text-white/90">
-          <div className="flex items-center gap-2"><span>📚</span><span>{w.className}</span></div>
-          <div className="flex items-center gap-2"><span>📍</span><span>{w.location}</span></div>
-          <div className="flex items-center gap-2"><span>🗓️</span><span>{w.week} · {w.time}</span></div>
-        </dl>
-      </section>
+
+        <div className="mt-4 divide-y divide-grey-100 border-t border-grey-100 pt-1">
+          <InfoRow label="수업" value={w.className} />
+          <InfoRow label="장소" value={w.location} />
+          <InfoRow label="일정" value={`${w.week} · ${w.time}`} />
+        </div>
+
+        <Button variant="primary" size="lg" fullWidth className="mt-4">
+          등원 QR 스캔하기
+        </Button>
+      </Card>
 
       {/* 이번 주 현황 */}
-      <h3 className="px-1 pt-1 text-sm font-bold text-slate-800">이번 주 현황</h3>
+      <SectionHeading>이번 주 현황</SectionHeading>
       <div className="grid grid-cols-2 gap-3">
-        <div className={`${card} p-4`}>
-          <div className="text-xs font-medium text-slate-400">과제 수행</div>
-          <div className="mt-1 flex items-baseline gap-1.5">
-            <span className="text-3xl font-extrabold" style={{ color: accent }}>{data.assignmentGrade.grade}</span>
-            <span className="text-[11px] text-slate-400">등급</span>
+        <Card className="p-4">
+          <div className="text-[13px] font-medium text-grey-600">과제 수행</div>
+          <div className="mt-1.5 flex items-baseline gap-1">
+            <span className="num text-[28px] font-bold tracking-[-0.03em] text-grey-900">
+              {data.assignmentGrade.grade}
+            </span>
+            <span className="text-[13px] text-grey-500">등급</span>
           </div>
-          <div className="mt-1 text-[11px] text-slate-400">{data.assignmentGrade.desc}</div>
-        </div>
-        <div className={`${card} p-4`}>
+          <div className="mt-1 text-[12px] text-grey-500">{data.assignmentGrade.desc}</div>
+        </Card>
+
+        <Card className="p-4">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-400">{data.test.round}</span>
-            <span className="rounded-full bg-rose-100 px-1.5 py-0.5 text-[10px] font-bold text-rose-500">상위 {data.test.percentile}%</span>
+            <span className="text-[13px] font-medium text-grey-600">{data.test.round}</span>
+            <Badge tone="blue">상위 {data.test.percentile}%</Badge>
           </div>
-          <div className="mt-1 flex items-baseline gap-0.5">
-            <span className="text-3xl font-extrabold text-slate-800">{data.test.score}</span>
-            <span className="text-sm text-slate-400">/ {data.test.max}점</span>
+          <div className="mt-1.5 flex items-baseline gap-0.5">
+            <span className="num text-[28px] font-bold tracking-[-0.03em] text-grey-900">
+              {data.test.score}
+            </span>
+            <span className="num text-[14px] text-grey-500">/ {data.test.max}점</span>
           </div>
-          <div className="mt-1 text-[11px] text-slate-400">반평균 {data.test.classAvg}점</div>
-        </div>
+          <div className="num mt-1 text-[12px] text-grey-500">반평균 {data.test.classAvg}점</div>
+        </Card>
       </div>
 
       {/* 이번 주 숙제 */}
-      <div className={`${card} p-5`}>
-        <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-sm font-bold text-slate-800">이번 주 숙제</h3>
-          <span className="text-[11px] text-slate-400">{data.homework.filter((h) => h.done).length}/{data.homework.length} 완료</span>
-        </div>
-        <ul className="space-y-1">
+      <SectionHeading right={`${doneCount}/${data.homework.length} 완료`}>이번 주 숙제</SectionHeading>
+      <Card padded={false}>
+        <ul className="divide-y divide-grey-100">
           {data.homework.map((h, i) => (
-            <li key={i} className="flex items-center justify-between rounded-2xl px-1 py-2">
-              <div className="flex items-center gap-3">
-                <CheckBox done={h.done} accent={accent} />
-                <div>
-                  <div className={`text-sm font-semibold ${h.done ? "text-slate-400 line-through" : "text-slate-800"}`}>{h.title}</div>
-                  <div className="text-[11px] text-slate-400">{h.sub}</div>
+            <li key={i} className="flex items-center justify-between gap-3 px-5 py-4">
+              <div className="flex min-w-0 items-center gap-3">
+                <CheckCircle done={h.done} />
+                <div className="min-w-0">
+                  <div
+                    className={`truncate text-[15px] font-semibold ${
+                      h.done ? "text-grey-400 line-through" : "text-grey-900"
+                    }`}
+                  >
+                    {h.title}
+                  </div>
+                  <div className="truncate text-[13px] text-grey-500">{h.sub}</div>
                 </div>
               </div>
               {!h.done && (
-                <button className="rounded-full px-3 py-1.5 text-xs font-bold text-white shadow-sm" style={{ backgroundColor: accent }}>제출하기</button>
+                <Button variant="weak" size="sm">
+                  제출
+                </Button>
               )}
             </li>
           ))}
         </ul>
-      </div>
+      </Card>
 
       {/* 공지 */}
-      <div className={`${card} p-5`}>
-        <div className="flex items-start gap-2">
-          <span className="text-sm">📌</span>
-          <div className="flex-1">
-            <div className="text-sm font-bold text-slate-800">{data.notice.title}</div>
-            <p className="mt-1 text-[13px] leading-relaxed text-slate-500">{data.notice.body}</p>
-            <div className="mt-2 flex items-center gap-2 text-[11px] text-slate-400">
-              <span>{data.notice.teacher}</span><span>·</span><span>{data.notice.date}</span>
-            </div>
-          </div>
+      <SectionHeading>공지</SectionHeading>
+      <Card>
+        <div className="text-[16px] font-bold text-grey-900">{data.notice.title}</div>
+        <p className="mt-1.5 text-[14px] leading-[1.6] text-grey-600">{data.notice.body}</p>
+        <div className="mt-3 flex items-center gap-1.5 text-[12px] text-grey-400">
+          <span>{data.notice.teacher}</span>
+          <span>·</span>
+          <span className="num">{data.notice.date}</span>
         </div>
-      </div>
+      </Card>
     </StudentFrame>
   );
 }

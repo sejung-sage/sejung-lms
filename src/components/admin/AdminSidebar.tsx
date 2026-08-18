@@ -1,8 +1,17 @@
 import Link from "next/link";
 
-function Ic({ d, size = 18 }: { d: string; size?: number }) {
+function Ic({ d, size = 20 }: { d: string; size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       {d.split("|").map((p, i) => (
         <path key={i} d={p} />
       ))}
@@ -47,6 +56,10 @@ function nav(slug: string): Group[] {
   ];
 }
 
+/**
+ * 토스식 라이트 사이드바.
+ * 어두운 사이드바 대신 흰 배경 + 1px 경계선, 활성 항목만 연한 파랑.
+ */
 export function AdminSidebar({
   slug, spaceName, subject, accent, initial, active,
 }: {
@@ -58,23 +71,27 @@ export function AdminSidebar({
   active: NavKey;
 }) {
   return (
-    <aside className="hidden w-60 shrink-0 flex-col bg-slate-900 text-slate-300 md:flex">
-      <div className="flex items-center gap-2.5 px-5 py-5">
-        <div className="flex size-9 items-center justify-center rounded-xl text-sm font-bold text-white shadow"
-          style={{ background: `linear-gradient(145deg, ${accent}, ${accent}bb)` }}>
+    <aside className="hidden w-[248px] shrink-0 flex-col border-r border-grey-100 bg-white md:flex">
+      <div className="flex items-center gap-3 px-5 py-5">
+        <div
+          className="flex size-10 shrink-0 items-center justify-center rounded-[12px] text-[15px] font-bold text-white"
+          style={{ backgroundColor: accent }}
+        >
           {initial}
         </div>
-        <div className="min-w-0 leading-tight">
-          <div className="truncate text-sm font-bold text-white">{spaceName}</div>
-          <div className="truncate text-[11px] text-slate-400">{subject} · 관리자</div>
+        <div className="min-w-0">
+          <div className="truncate text-[15px] font-bold text-grey-900">{spaceName}</div>
+          <div className="truncate text-[13px] text-grey-500">{subject} · 관리자</div>
         </div>
       </div>
 
-      <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-2">
+      <nav className="flex-1 space-y-6 overflow-y-auto px-3 pb-4 pt-1">
         {nav(slug).map((g, gi) => (
           <div key={gi}>
             {g.title && (
-              <div className="px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">{g.title}</div>
+              <div className="px-3 pb-1 text-[12px] font-semibold text-grey-400">
+                {g.title}
+              </div>
             )}
             <ul className="space-y-0.5">
               {g.items.map((it) => {
@@ -83,13 +100,14 @@ export function AdminSidebar({
                   <li key={it.key}>
                     <Link
                       href={it.href}
-                      className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition ${
-                        on ? "font-semibold text-white" : "text-slate-300 hover:bg-white/5 hover:text-white"
+                      className={`flex h-11 items-center gap-3 rounded-btn px-3 text-[15px] tracking-[-0.02em] transition-colors duration-100 ${
+                        on
+                          ? "bg-blue-100 font-semibold text-blue-600"
+                          : "font-medium text-grey-600 hover:bg-grey-50 hover:text-grey-900"
                       }`}
-                      style={on ? { backgroundColor: `${accent}33` } : undefined}
                       aria-current={on ? "page" : undefined}
                     >
-                      <span style={on ? { color: accent } : undefined}><Ic d={ICON[it.icon]} /></span>
+                      <Ic d={ICON[it.icon]} />
                       {it.label}
                     </Link>
                   </li>
@@ -100,17 +118,23 @@ export function AdminSidebar({
         ))}
       </nav>
 
-      <div className="border-t border-white/5 px-4 py-4">
+      <div className="border-t border-grey-100 px-4 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="flex size-8 items-center justify-center rounded-full bg-white/10 text-xs font-bold text-white">원</div>
-            <div className="text-xs">
-              <div className="font-semibold text-white">목데이터 원장</div>
-              <div className="text-slate-500">실장</div>
+            <div className="flex size-9 items-center justify-center rounded-full bg-grey-100 text-[13px] font-bold text-grey-600">
+              원
+            </div>
+            <div className="leading-tight">
+              <div className="text-[14px] font-semibold text-grey-900">목데이터 원장</div>
+              <div className="text-[12px] text-grey-500">실장</div>
             </div>
           </div>
-          <Link href="/" className="text-slate-500 transition hover:text-white" title="홈으로">
-            <Ic d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4|M16 17l5-5-5-5|M21 12H9" size={17} />
+          <Link
+            href="/"
+            className="flex size-9 items-center justify-center rounded-full text-grey-400 transition-colors hover:bg-grey-100 hover:text-grey-700"
+            title="홈으로"
+          >
+            <Ic d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4|M16 17l5-5-5-5|M21 12H9" size={18} />
           </Link>
         </div>
       </div>

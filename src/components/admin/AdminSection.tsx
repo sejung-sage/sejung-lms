@@ -1,33 +1,63 @@
 import { Card, Badge, cardBase, ComingSoon } from "./ui";
+import { ProgressBar } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { ChipTabs } from "@/components/ui/Tabs";
 import type { NavKey } from "./AdminSidebar";
 import {
   mockStudents, mockAttendance, mockHomework, mockGrades, mockApprovals,
 } from "@/lib/mock/admin";
 
+/* ── 토스식 테이블 프리미티브 ──────────────────────
+   헤더는 대문자 트래킹 대신 얌전한 회색 소문자.
+   구분선은 grey-100 1px, hover 는 grey-50. */
+
 function Th({ children, right }: { children: React.ReactNode; right?: boolean }) {
   return (
-    <th className={`px-3 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400 ${right ? "text-right" : "text-left"}`}>
+    <th
+      className={`whitespace-nowrap px-4 py-3 text-[13px] font-medium text-grey-500 ${
+        right ? "text-right" : "text-left"
+      }`}
+    >
       {children}
     </th>
   );
 }
-function Td({ children, right, className = "" }: { children: React.ReactNode; right?: boolean; className?: string }) {
-  return <td className={`px-3 py-3 text-sm ${right ? "text-right" : "text-left"} ${className}`}>{children}</td>;
-}
-
-function Stat({ label, value, tint }: { label: string; value: number | string; tint: string }) {
+function Td({
+  children,
+  right,
+  className = "",
+}: {
+  children: React.ReactNode;
+  right?: boolean;
+  className?: string;
+}) {
   return (
-    <div className={`${cardBase} px-4 py-3`}>
-      <div className="text-[11px] font-semibold text-slate-400">{label}</div>
-      <div className={`mt-0.5 text-2xl font-extrabold ${tint}`}>{value}</div>
+    <td
+      className={`px-4 py-3.5 text-[15px] ${right ? "text-right" : "text-left"} ${className}`}
+    >
+      {children}
+    </td>
+  );
+}
+function TableCard({ title, sub, children }: { title?: string; sub?: string; children: React.ReactNode }) {
+  return (
+    <div className={`${cardBase} overflow-hidden`}>
+      {title && (
+        <div className="flex items-center gap-2 border-b border-grey-100 px-5 py-4">
+          <span className="text-[15px] font-bold text-grey-900">{title}</span>
+          {sub && <span className="text-[13px] text-grey-500">{sub}</span>}
+        </div>
+      )}
+      <div className="overflow-x-auto">{children}</div>
     </div>
   );
 }
 
-function MiniBar({ value, accent }: { value: number; accent: string }) {
+function Stat({ label, value, tint }: { label: string; value: number | string; tint: string }) {
   return (
-    <div className="ml-auto h-1.5 w-16 overflow-hidden rounded-full bg-slate-100">
-      <div className="h-full rounded-full" style={{ width: `${Math.min(value, 100)}%`, backgroundColor: accent }} />
+    <div className={`${cardBase} p-5`}>
+      <div className="text-[13px] font-medium text-grey-600">{label}</div>
+      <div className={`num mt-1 text-[26px] font-bold tracking-[-0.03em] ${tint}`}>{value}</div>
     </div>
   );
 }
@@ -44,31 +74,47 @@ export function AdminSection({
     const rows = mockStudents(subject);
     return (
       <>
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-slate-400">전체 <b className="text-slate-700">{rows.length}</b>명</div>
-          <div className="rounded-full bg-white px-3 py-1.5 text-xs text-slate-400 shadow-sm ring-1 ring-slate-900/5">🔍 이름·학교 검색</div>
-        </div>
-        <div className={`${cardBase} overflow-hidden`}>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px]">
-              <thead className="border-b border-slate-100">
-                <tr><Th>이름</Th><Th>학교/학년</Th><Th>반</Th><Th right>출석률</Th><Th right>숙제율</Th><Th right>상태</Th></tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {rows.map((s) => (
-                  <tr key={s.name} className="hover:bg-slate-50/60">
-                    <Td className="font-semibold text-slate-800">{s.name}</Td>
-                    <Td className="text-slate-500">{s.school} · {s.grade}</Td>
-                    <Td className="text-slate-500">{s.className}</Td>
-                    <Td right><div className="flex items-center gap-2"><span className="tabular-nums text-slate-600">{s.attendanceRate}%</span><MiniBar value={s.attendanceRate} accent={accent} /></div></Td>
-                    <Td right><span className="tabular-nums text-slate-600">{s.hwRate}%</span></Td>
-                    <Td right><Badge label={s.status === "재원" ? "출석" : "대기"} /></Td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <ChipTabs
+            active="all"
+            items={[
+              { key: "all", label: `전체 ${rows.length}` },
+              { key: "active", label: "재원" },
+              { key: "rest", label: "휴원" },
+            ]}
+          />
+          <div className="inline-flex h-9 items-center gap-1.5 rounded-[10px] bg-white px-3 text-[14px] text-grey-400 ring-1 ring-grey-200">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
+            </svg>
+            이름·학교 검색
           </div>
         </div>
+
+        <TableCard>
+          <table className="w-full min-w-[680px]">
+            <thead className="border-b border-grey-100">
+              <tr><Th>이름</Th><Th>학교/학년</Th><Th>반</Th><Th right>출석률</Th><Th right>숙제율</Th><Th right>상태</Th></tr>
+            </thead>
+            <tbody className="divide-y divide-grey-100">
+              {rows.map((s) => (
+                <tr key={s.name} className="transition-colors hover:bg-grey-50">
+                  <Td className="font-semibold text-grey-900">{s.name}</Td>
+                  <Td className="text-grey-600">{s.school} · {s.grade}</Td>
+                  <Td className="text-grey-600">{s.className}</Td>
+                  <Td right>
+                    <div className="flex items-center justify-end gap-2.5">
+                      <span className="num text-grey-700">{s.attendanceRate}%</span>
+                      <ProgressBar value={s.attendanceRate} className="w-16" />
+                    </div>
+                  </Td>
+                  <Td right className="num text-grey-700">{s.hwRate}%</Td>
+                  <Td right><Badge label={s.status === "재원" ? "출석" : "대기"} /></Td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </TableCard>
       </>
     );
   }
@@ -80,30 +126,26 @@ export function AdminSection({
     return (
       <>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Stat label="출석" value={count("출석")} tint="text-emerald-600" />
-          <Stat label="지각" value={count("지각")} tint="text-amber-600" />
-          <Stat label="결석" value={count("결석")} tint="text-rose-500" />
-          <Stat label="미등원" value={count("예정")} tint="text-slate-400" />
+          <Stat label="출석" value={count("출석")} tint="text-green-600" />
+          <Stat label="지각" value={count("지각")} tint="text-yellow-600" />
+          <Stat label="결석" value={count("결석")} tint="text-red-500" />
+          <Stat label="미등원" value={count("예정")} tint="text-grey-400" />
         </div>
-        <div className={`${cardBase} overflow-hidden`}>
-          <div className="border-b border-slate-100 px-5 py-3 text-sm font-semibold text-slate-700">
-            {session} <span className="ml-1 text-xs font-normal text-slate-400">· 등원 QR 스캔</span>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[480px]">
-              <thead className="border-b border-slate-100"><tr><Th>이름</Th><Th>등원 시각</Th><Th right>상태</Th></tr></thead>
-              <tbody className="divide-y divide-slate-50">
-                {rows.map((r) => (
-                  <tr key={r.name} className="hover:bg-slate-50/60">
-                    <Td className="font-semibold text-slate-800">{r.name}</Td>
-                    <Td className="tabular-nums text-slate-500">{r.time}</Td>
-                    <Td right><Badge label={r.status === "예정" ? "예정" : r.status} /></Td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+
+        <TableCard title={session} sub="· 등원 QR 스캔">
+          <table className="w-full min-w-[480px]">
+            <thead className="border-b border-grey-100"><tr><Th>이름</Th><Th>등원 시각</Th><Th right>상태</Th></tr></thead>
+            <tbody className="divide-y divide-grey-100">
+              {rows.map((r) => (
+                <tr key={r.name} className="transition-colors hover:bg-grey-50">
+                  <Td className="font-semibold text-grey-900">{r.name}</Td>
+                  <Td className="num text-grey-600">{r.time}</Td>
+                  <Td right><Badge label={r.status === "예정" ? "예정" : r.status} /></Td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </TableCard>
       </>
     );
   }
@@ -118,34 +160,31 @@ export function AdminSection({
         <Card>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <div className="text-sm font-bold text-slate-800">{title}</div>
-              <div className="text-xs text-slate-400">마감 {due}</div>
+              <div className="text-[16px] font-bold text-grey-900">{title}</div>
+              <div className="text-[13px] text-grey-500">마감 {due}</div>
             </div>
             <div className="text-right">
-              <div className="text-2xl font-extrabold" style={{ color: accent }}>{rate}%</div>
-              <div className="text-[11px] text-slate-400">{submitted}/{rows.length} 제출</div>
+              <div className="num text-[26px] font-bold tracking-[-0.03em] text-blue-500">{rate}%</div>
+              <div className="num text-[13px] text-grey-500">{submitted}/{rows.length} 제출</div>
             </div>
           </div>
-          <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
-            <div className="h-full rounded-full" style={{ width: `${rate}%`, backgroundColor: accent }} />
-          </div>
+          <ProgressBar value={rate} className="mt-4 h-2" />
         </Card>
-        <div className={`${cardBase} overflow-hidden`}>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[480px]">
-              <thead className="border-b border-slate-100"><tr><Th>이름</Th><Th>제출 시각</Th><Th right>상태</Th></tr></thead>
-              <tbody className="divide-y divide-slate-50">
-                {rows.map((r) => (
-                  <tr key={r.name} className="hover:bg-slate-50/60">
-                    <Td className="font-semibold text-slate-800">{r.name}</Td>
-                    <Td className="tabular-nums text-slate-500">{r.at}</Td>
-                    <Td right><Badge label={r.status} /></Td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+
+        <TableCard>
+          <table className="w-full min-w-[480px]">
+            <thead className="border-b border-grey-100"><tr><Th>이름</Th><Th>제출 시각</Th><Th right>상태</Th></tr></thead>
+            <tbody className="divide-y divide-grey-100">
+              {rows.map((r) => (
+                <tr key={r.name} className="transition-colors hover:bg-grey-50">
+                  <Td className="font-semibold text-grey-900">{r.name}</Td>
+                  <Td className="num text-grey-600">{r.at}</Td>
+                  <Td right><Badge label={r.status} /></Td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </TableCard>
       </>
     );
   }
@@ -154,27 +193,26 @@ export function AdminSection({
   if (section === "grades") {
     const { columns, rows } = mockGrades(subject);
     return (
-      <div className={`${cardBase} overflow-hidden`}>
-        <div className="border-b border-slate-100 px-5 py-3 text-sm font-semibold text-slate-700">
-          7회차 주간 성적
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[560px]">
-            <thead className="border-b border-slate-100">
-              <tr><Th>이름</Th>{columns.map((c) => <Th key={c} right>{c}</Th>)}<Th right>평균</Th></tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {rows.map((r) => (
-                <tr key={r.name} className="hover:bg-slate-50/60">
-                  <Td className="font-semibold text-slate-800">{r.name}</Td>
-                  {r.scores.map((s, i) => <Td key={i} right className="tabular-nums text-slate-600">{s}</Td>)}
-                  <Td right><span className="rounded-full px-2 py-0.5 text-xs font-bold text-white" style={{ backgroundColor: accent }}>{r.avg}</span></Td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <TableCard title="7회차 주간 성적">
+        <table className="w-full min-w-[560px]">
+          <thead className="border-b border-grey-100">
+            <tr><Th>이름</Th>{columns.map((c) => <Th key={c} right>{c}</Th>)}<Th right>평균</Th></tr>
+          </thead>
+          <tbody className="divide-y divide-grey-100">
+            {rows.map((r) => (
+              <tr key={r.name} className="transition-colors hover:bg-grey-50">
+                <Td className="font-semibold text-grey-900">{r.name}</Td>
+                {r.scores.map((s, i) => <Td key={i} right className="num text-grey-700">{s}</Td>)}
+                <Td right>
+                  <span className="num rounded-[6px] bg-blue-100 px-2 py-1 text-[13px] font-bold text-blue-600">
+                    {r.avg}
+                  </span>
+                </Td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </TableCard>
     );
   }
 
@@ -186,20 +224,23 @@ export function AdminSection({
         {rows.map((a, i) => (
           <div key={i} className={`${cardBase} flex flex-wrap items-center justify-between gap-3 p-4`}>
             <div className="flex items-center gap-3">
-              <div className="flex size-10 items-center justify-center rounded-full bg-slate-100 text-sm font-bold text-slate-500">
+              <div
+                className="flex size-11 items-center justify-center rounded-full text-[15px] font-bold text-white"
+                style={{ backgroundColor: accent }}
+              >
                 {a.name.charAt(0)}
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold text-slate-800">{a.name}</span>
+                  <span className="text-[15px] font-bold text-grey-900">{a.name}</span>
                   <Badge label="대기" />
                 </div>
-                <div className="text-xs text-slate-400">{a.type} · {a.detail} · {a.at}</div>
+                <div className="text-[13px] text-grey-500">{a.type} · {a.detail} · {a.at}</div>
               </div>
             </div>
             <div className="flex gap-2">
-              <button className="rounded-full px-4 py-1.5 text-xs font-bold text-white shadow-sm" style={{ backgroundColor: accent }}>승인</button>
-              <button className="rounded-full bg-slate-100 px-4 py-1.5 text-xs font-bold text-slate-500">거절</button>
+              <Button variant="primary" size="sm">승인</Button>
+              <Button variant="secondary" size="sm">거절</Button>
             </div>
           </div>
         ))}

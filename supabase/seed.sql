@@ -15,11 +15,12 @@ with b as (select id from public.branches where name = '대치')
 insert into public.teacher_spaces (branch_id, name, subject, slug, accent_color, sort_order)
 select b.id, v.name, v.subject, v.slug, v.color, v.sort
 from b, (values
-  ('김쌤',     '수학', 'kim-math',      '#2563eb', 1),
-  ('박쌤',     '수학', 'park-math',     '#16a34a', 2),
-  ('글로리아', '영어', 'gloria-eng',    '#9333ea', 3),
-  ('손쌤',     '국어', 'son-kor',       '#ea580c', 4),
-  ('백신',     '화학', 'baek-chem',     '#0891b2', 5),
-  ('꽉처스',   '수학', 'quakchers-math','#db2777', 6)
+  -- accent_color: TDS 톤 + 흰 글자 대비 4.5:1 이상 (마이그레이션 …_tds_accent_colors 참고)
+  ('김쌤',     '수학', 'kim-math',      '#1b64da', 1),
+  ('박쌤',     '수학', 'park-math',     '#07835a', 2),
+  ('글로리아', '영어', 'gloria-eng',    '#6b4ce0', 3),
+  ('손쌤',     '국어', 'son-kor',       '#c2410c', 4),
+  ('백신',     '화학', 'baek-chem',     '#12808f', 5),
+  ('꽉처스',   '수학', 'quakchers-math','#d81b60', 6)
 ) as v(name, subject, slug, color, sort)
 on conflict (slug) do nothing;

@@ -1,9 +1,10 @@
-import Link from "next/link";
 import type { SpaceDetail } from "@/lib/spaces";
 import { AdminSidebar, type NavKey } from "./AdminSidebar";
+import { ButtonLink } from "@/components/ui/Button";
 
 /**
  * 관리자 웹 공용 레이아웃: 좌측 사이드바 + 상단바 + 콘텐츠.
+ * 토스식: 흰 크롬 / grey-50 본문 / 경계는 1px 선으로만.
  */
 export function AdminShell({
   space,
@@ -24,7 +25,7 @@ export function AdminShell({
   const initial = space.name.replace(/쌤$/, "").charAt(0) || space.name.charAt(0);
 
   return (
-    <div className="flex min-h-dvh bg-slate-50 text-slate-800">
+    <div className="flex min-h-dvh bg-grey-50 text-grey-900">
       <AdminSidebar
         slug={slug}
         spaceName={space.name}
@@ -35,37 +36,33 @@ export function AdminShell({
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-900/[0.06] bg-white px-6 py-4">
-          <div className="flex items-center gap-2">
+        <header className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 border-b border-grey-100 bg-white px-6 py-4">
+          <div className="flex items-center gap-2.5">
             <div
-              className="flex size-7 items-center justify-center rounded-lg text-xs font-bold text-white md:hidden"
-              style={{ background: `linear-gradient(145deg, ${accent}, ${accent}bb)` }}
+              className="flex size-8 items-center justify-center rounded-[10px] text-[13px] font-bold text-white md:hidden"
+              style={{ backgroundColor: accent }}
             >
               {initial}
             </div>
             <div>
-              <h1 className="text-lg font-bold text-slate-900">{title}</h1>
-              {subtitle && <p className="text-xs text-slate-400">{subtitle}</p>}
+              <h1 className="text-[20px] font-bold text-grey-900">{title}</h1>
+              {subtitle && <p className="text-[13px] text-grey-500">{subtitle}</p>}
             </div>
           </div>
+
           <div className="flex items-center gap-2">
-            <span className="hidden items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-500 sm:inline-flex">
-              📅 2026년 7월
+            <span className="num hidden h-9 items-center rounded-[10px] bg-grey-100 px-3 text-[14px] font-medium text-grey-600 sm:inline-flex">
+              2026년 7월
             </span>
-            <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600">실장</span>
-            <Link
-              href={`/s/${slug}/parent`}
-              className="hidden rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-200 sm:inline-block"
-            >
+            <span className="inline-flex h-9 items-center rounded-[10px] bg-grey-100 px-3 text-[14px] font-semibold text-grey-700">
+              실장
+            </span>
+            <ButtonLink href={`/s/${slug}/parent`} variant="secondary" size="sm" className="hidden sm:inline-flex">
               학부모 앱
-            </Link>
-            <Link
-              href={`/s/${slug}/student`}
-              className="rounded-full px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:opacity-90"
-              style={{ backgroundColor: accent }}
-            >
-              학생 앱 →
-            </Link>
+            </ButtonLink>
+            <ButtonLink href={`/s/${slug}/student`} variant="primary" size="sm">
+              학생 앱
+            </ButtonLink>
           </div>
         </header>
 

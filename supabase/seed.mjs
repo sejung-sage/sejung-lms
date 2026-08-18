@@ -12,13 +12,14 @@ if (!url || !key) {
 const db = createClient(url, key, { auth: { persistSession: false } });
 
 const BRANCHES = ["대치", "반포", "방배", "송도"];
+// accent_color: TDS 톤 + 흰 글자 대비 4.5:1 이상 (마이그레이션 …_tds_accent_colors 참고)
 const SPACES = [
-  { name: "김쌤", subject: "수학", slug: "kim-math", accent_color: "#2563eb", sort_order: 1 },
-  { name: "박쌤", subject: "수학", slug: "park-math", accent_color: "#16a34a", sort_order: 2 },
-  { name: "글로리아", subject: "영어", slug: "gloria-eng", accent_color: "#9333ea", sort_order: 3 },
-  { name: "손쌤", subject: "국어", slug: "son-kor", accent_color: "#ea580c", sort_order: 4 },
-  { name: "백신", subject: "화학", slug: "baek-chem", accent_color: "#0891b2", sort_order: 5 },
-  { name: "꽉처스", subject: "수학", slug: "quakchers-math", accent_color: "#db2777", sort_order: 6 },
+  { name: "김쌤", subject: "수학", slug: "kim-math", accent_color: "#1b64da", sort_order: 1 },
+  { name: "박쌤", subject: "수학", slug: "park-math", accent_color: "#07835a", sort_order: 2 },
+  { name: "글로리아", subject: "영어", slug: "gloria-eng", accent_color: "#6b4ce0", sort_order: 3 },
+  { name: "손쌤", subject: "국어", slug: "son-kor", accent_color: "#c2410c", sort_order: 4 },
+  { name: "백신", subject: "화학", slug: "baek-chem", accent_color: "#12808f", sort_order: 5 },
+  { name: "꽉처스", subject: "수학", slug: "quakchers-math", accent_color: "#d81b60", sort_order: 6 },
 ];
 
 const { error: bErr } = await db

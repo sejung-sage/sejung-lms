@@ -13,7 +13,7 @@ export function QrGlyph({ className = "" }: { className?: string }) {
       {p.map((v, i) => (
         <span
           key={i}
-          className={`size-1.5 rounded-[1px] ${v ? "bg-zinc-800" : "bg-transparent"}`}
+          className={`size-1.5 rounded-[1px] ${v ? "bg-grey-900" : "bg-transparent"}`}
         />
       ))}
     </div>

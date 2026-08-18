@@ -1,11 +1,15 @@
-/* 순수 SVG 차트 (서버 컴포넌트) */
+/* 순수 SVG 차트 (서버 컴포넌트) — Toss Design System 톤 */
+
+const TOSS_BLUE = "#3182f6";
+const GRID = "#e5e8eb"; // grey-200
+const LABEL = "#b0b8c1"; // grey-400
 
 export function LineChart({
-  points, labels, color, min = 60, max = 100,
+  points, labels, color = TOSS_BLUE, min = 60, max = 100,
 }: {
   points: number[];
   labels: string[];
-  color: string;
+  color?: string;
   min?: number;
   max?: number;
 }) {
@@ -24,27 +28,27 @@ export function LineChart({
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="점수 추이">
       <defs>
         <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.28" />
+          <stop offset="0%" stopColor={color} stopOpacity="0.16" />
           <stop offset="100%" stopColor={color} stopOpacity="0" />
         </linearGradient>
       </defs>
-      {/* 가로 그리드 */}
+      {/* 가로 그리드 — 실선 1px, 아주 옅게 */}
       {[0, 0.5, 1].map((g) => (
-        <line key={g} x1={padX} x2={W - padX} y1={padTop + innerH * g} y2={padTop + innerH * g} stroke="#e5e7eb" strokeWidth="1" strokeDasharray="3 4" />
+        <line key={g} x1={padX} x2={W - padX} y1={padTop + innerH * g} y2={padTop + innerH * g} stroke={GRID} strokeWidth="1" />
       ))}
       <polygon points={area} fill={`url(#${gid})`} />
       <polyline points={line} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
       {points.map((p, i) => (
-        <circle key={i} cx={x(i)} cy={y(p)} r="3.2" fill="#fff" stroke={color} strokeWidth="2" />
+        <circle key={i} cx={x(i)} cy={y(p)} r="3.4" fill="#fff" stroke={color} strokeWidth="2.2" />
       ))}
       {labels.map((l, i) => (
-        <text key={i} x={x(i)} y={H - 8} textAnchor="middle" fontSize="9" fill="#9ca3af">{l}</text>
+        <text key={i} x={x(i)} y={H - 8} textAnchor="middle" fontSize="11" fontWeight="500" fill={LABEL}>{l}</text>
       ))}
     </svg>
   );
 }
 
-export function Donut({ value, color, size = 96 }: { value: number; color: string; size?: number }) {
+export function Donut({ value, color = TOSS_BLUE, size = 96 }: { value: number; color?: string; size?: number }) {
   const stroke = 10;
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
@@ -52,13 +56,13 @@ export function Donut({ value, color, size = 96 }: { value: number; color: strin
   return (
     <div className="relative" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="-rotate-90">
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#eef0f4" strokeWidth={stroke} />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#f2f4f6" strokeWidth={stroke} />
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={stroke}
           strokeDasharray={c} strokeDashoffset={off} strokeLinecap="round" />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-lg font-extrabold" style={{ color }}>{value}%</span>
-        <span className="text-[10px] text-slate-400">진행도</span>
+        <span className="num text-[20px] font-bold tracking-[-0.03em] text-grey-900">{value}%</span>
+        <span className="text-[11px] font-medium text-grey-500">진행도</span>
       </div>
     </div>
   );
