@@ -14,7 +14,7 @@ export default async function StudentGradePage({
   const space = await getSpaceBySlug(slug);
   if (!space) notFound();
 
-  const data = await getStudentGrade({ name: space.name, subject: space.subject, slug });
+  const data = await getStudentGrade(space);
   if (!data) notFound();
 
   return <StudentGrade space={space} slug={slug} data={data} />;

@@ -9,8 +9,13 @@ import type { TeacherSpace } from "@/components/TeacherIcon";
  */
 const useMock = process.env.USE_MOCK_DB === "true";
 
-export type SpaceDetail = Pick<TeacherSpace, "name" | "accent_color"> & {
+/** 화면 데이터 함수들이 공통으로 받는 공간 식별자. id 가 있어야 실 DB 조회가 된다. */
+export type SpaceDetail = {
+  id: string;
+  name: string;
   subject: string | null;
+  slug: string | null;
+  accent_color: string;
 };
 
 export async function getSpaces(): Promise<TeacherSpace[]> {
@@ -33,13 +38,15 @@ export async function getSpaces(): Promise<TeacherSpace[]> {
 export async function getSpaceBySlug(slug: string): Promise<SpaceDetail | null> {
   if (useMock) {
     const s = MOCK_SPACES.find((x) => x.slug === slug);
-    return s ? { name: s.name, subject: s.subject, accent_color: s.accent_color } : null;
+    return s
+      ? { id: s.id, name: s.name, subject: s.subject, slug: s.slug, accent_color: s.accent_color }
+      : null;
   }
 
   const supabase = createAdminClient();
   const { data } = await supabase
     .from("teacher_spaces")
-    .select("name, subject, accent_color")
+    .select("id, name, subject, slug, accent_color")
     .eq("slug", slug)
     .eq("is_active", true)
     .maybeSingle();

@@ -15,11 +15,7 @@ export default async function StudentPage({
 
   if (!space) notFound();
 
-  const data = await getStudentHome({
-    name: space.name,
-    subject: space.subject,
-    slug,
-  });
+  const data = await getStudentHome(space);
 
   if (!data) notFound();
 

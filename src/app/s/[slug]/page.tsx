@@ -15,11 +15,7 @@ export default async function SpacePage({
 
   if (!space) notFound();
 
-  const dashboard = await getDashboard({
-    name: space.name,
-    subject: space.subject,
-    slug,
-  });
+  const dashboard = await getDashboard(space);
 
   return <TeacherDashboard space={space} slug={slug} data={dashboard} />;
 }

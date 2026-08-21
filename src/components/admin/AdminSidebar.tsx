@@ -1,5 +1,15 @@
 import Link from "next/link";
 
+/**
+ * 아이콘 레일 사이드바 — 대치온 CRM 구조.
+ *
+ * 넓은 사이드바(248px) 대신 76px 레일을 쓰는 이유는 취향이 아니라 계산이다.
+ * 이 화면의 주인공은 40행짜리 표이고, 표에는 이름·전화번호·출결이력·성적추이가
+ * 동시에 들어간다. 사이드바에서 되찾은 172px 이 그대로 표의 열 하나가 된다.
+ *
+ * 색·글자는 레퍼런스 규칙: 활성 항목은 blue-soft 바탕 + blue 글자 700.
+ */
+
 function Ic({ d, size = 20 }: { d: string; size?: number }) {
   return (
     <svg
@@ -8,9 +18,10 @@ function Ic({ d, size = 20 }: { d: string; size?: number }) {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.8"
+      strokeWidth="1.7"
       strokeLinecap="round"
       strokeLinejoin="round"
+      className="shrink-0"
     >
       {d.split("|").map((p, i) => (
         <path key={i} d={p} />
@@ -18,6 +29,7 @@ function Ic({ d, size = 20 }: { d: string; size?: number }) {
     </svg>
   );
 }
+
 const ICON = {
   dash: "M3 10.5 12 3l9 7.5|M5 9.5V21h14V9.5",
   check: "M9 11l3 3L22 4|M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11",
@@ -27,116 +39,115 @@ const ICON = {
   badge: "M9 12l2 2 4-4|M12 3l7 4v5c0 5-3.5 8-7 9-3.5-1-7-4-7-9V7z",
   chart: "M5 21V10|M12 21V4|M19 21v-7",
   video: "M15 10l5-3v10l-5-3z|M3 6h12v12H3z",
+  home: "M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4|M16 17l5-5-5-5|M21 12H9",
 };
 
 export type NavKey =
   | "dash" | "attendance" | "homework" | "makeup"
   | "students" | "approvals" | "grades" | "videos";
 
-type Item = { key: NavKey; label: string; icon: keyof typeof ICON; href: string };
-type Group = { title?: string; items: Item[] };
+type Item = {
+  key: NavKey;
+  label: string;
+  icon: keyof typeof ICON;
+  href: string;
+  /** 처리해야 할 건수. 값이 있을 때만 빨간 점이 붙는다. */
+  badge?: number;
+};
 
-function nav(slug: string): Group[] {
+function nav(slug: string): Item[][] {
   const a = `/s/${slug}/admin`;
+  // 배열 하나 = 레일 위 한 덩어리. 덩어리 사이에만 얇은 구분선이 들어간다.
   return [
-    { items: [{ key: "dash", label: "대시보드", icon: "dash", href: `/s/${slug}` }] },
-    { title: "수업 현장", items: [
-      { key: "attendance", label: "출석 관리", icon: "check", href: `${a}/attendance` },
-      { key: "homework", label: "숙제 관리", icon: "book", href: `${a}/homework` },
-      { key: "makeup", label: "보강 관리", icon: "refresh", href: `${a}/makeup` },
-    ] },
-    { title: "학생", items: [
-      { key: "students", label: "학생 목록", icon: "users", href: `${a}/students` },
-      { key: "approvals", label: "계정 승인", icon: "badge", href: `${a}/approvals` },
-    ] },
-    { title: "학습 관리", items: [
+    [{ key: "dash", label: "대시보드", icon: "dash", href: `/s/${slug}` }],
+    [
+      { key: "attendance", label: "출석", icon: "check", href: `${a}/attendance` },
+      { key: "homework", label: "숙제", icon: "book", href: `${a}/homework` },
+      { key: "makeup", label: "보강", icon: "refresh", href: `${a}/makeup` },
+    ],
+    [
+      { key: "students", label: "학생", icon: "users", href: `${a}/students` },
+      { key: "approvals", label: "승인", icon: "badge", href: `${a}/approvals` },
+    ],
+    [
       { key: "grades", label: "성적", icon: "chart", href: `${a}/grades` },
-      { key: "videos", label: "영상 관리", icon: "video", href: `${a}/videos` },
-    ] },
+      { key: "videos", label: "영상", icon: "video", href: `${a}/videos` },
+    ],
   ];
 }
 
-/**
- * 토스식 라이트 사이드바.
- * 어두운 사이드바 대신 흰 배경 + 1px 경계선, 활성 항목만 연한 파랑.
- */
+function RailItem({ item, on }: { item: Item; on: boolean }) {
+  return (
+    <Link
+      href={item.href}
+      aria-current={on ? "page" : undefined}
+      className={`pressable relative flex flex-col items-center gap-1 rounded-md py-2.5 transition-colors duration-100 ${
+        on
+          ? "bg-blue-100 text-blue-600"
+          : "text-grey-600 hover:bg-grey-100 hover:text-grey-900"
+      }`}
+    >
+      <Ic d={ICON[item.icon]} />
+      <span className={`text-[11px] tracking-[-0.02em] ${on ? "font-bold" : "font-semibold"}`}>
+        {item.label}
+      </span>
+      {item.badge ? (
+        <span className="absolute right-2 top-1.5 inline-flex min-w-[17px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-[17px] text-white">
+          {item.badge > 99 ? "99+" : item.badge}
+        </span>
+      ) : null}
+    </Link>
+  );
+}
+
 export function AdminSidebar({
-  slug, spaceName, subject, accent, initial, active,
+  slug, spaceName, accent, initial, active, version = "v0.1",
 }: {
   slug: string;
   spaceName: string;
-  subject: string | null;
   accent: string;
   initial: string;
   active: NavKey;
+  version?: string;
 }) {
   return (
-    <aside className="hidden w-[248px] shrink-0 flex-col border-r border-grey-100 bg-white md:flex">
-      <div className="flex items-center gap-3 px-5 py-5">
-        <div
-          className="flex size-10 shrink-0 items-center justify-center rounded-[12px] text-[15px] font-bold text-white"
-          style={{ backgroundColor: accent }}
-        >
-          {initial}
-        </div>
-        <div className="min-w-0">
-          <div className="truncate text-[15px] font-bold text-grey-900">{spaceName}</div>
-          <div className="truncate text-[13px] text-grey-500">{subject} · 관리자</div>
-        </div>
-      </div>
+    <aside className="hidden w-[76px] shrink-0 flex-col border-r border-grey-200 bg-white md:flex">
+      <Link
+        href="/"
+        title={`${spaceName} · 런처로`}
+        className="pressable mx-auto mb-1 mt-4 flex size-10 items-center justify-center rounded-md text-[15px] font-bold text-white"
+        style={{ backgroundColor: accent }}
+      >
+        {initial}
+      </Link>
 
-      <nav className="flex-1 space-y-6 overflow-y-auto px-3 pb-4 pt-1">
-        {nav(slug).map((g, gi) => (
-          <div key={gi}>
-            {g.title && (
-              <div className="px-3 pb-1 text-[12px] font-semibold text-grey-400">
-                {g.title}
-              </div>
-            )}
+      <nav className="flex-1 overflow-y-auto px-2 pb-3 pt-2">
+        {nav(slug).map((group, gi) => (
+          <div
+            key={gi}
+            className={gi > 0 ? "mt-1.5 border-t border-grey-100 pt-1.5" : ""}
+          >
             <ul className="space-y-0.5">
-              {g.items.map((it) => {
-                const on = it.key === active;
-                return (
-                  <li key={it.key}>
-                    <Link
-                      href={it.href}
-                      className={`flex h-11 items-center gap-3 rounded-btn px-3 text-[15px] tracking-[-0.02em] transition-colors duration-100 ${
-                        on
-                          ? "bg-blue-100 font-semibold text-blue-600"
-                          : "font-medium text-grey-600 hover:bg-grey-50 hover:text-grey-900"
-                      }`}
-                      aria-current={on ? "page" : undefined}
-                    >
-                      <Ic d={ICON[it.icon]} />
-                      {it.label}
-                    </Link>
-                  </li>
-                );
-              })}
+              {group.map((it) => (
+                <li key={it.key}>
+                  <RailItem item={it} on={it.key === active} />
+                </li>
+              ))}
             </ul>
           </div>
         ))}
       </nav>
 
-      <div className="border-t border-grey-100 px-4 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="flex size-9 items-center justify-center rounded-full bg-grey-100 text-[13px] font-bold text-grey-600">
-              원
-            </div>
-            <div className="leading-tight">
-              <div className="text-[14px] font-semibold text-grey-900">목데이터 원장</div>
-              <div className="text-[12px] text-grey-500">실장</div>
-            </div>
-          </div>
-          <Link
-            href="/"
-            className="flex size-9 items-center justify-center rounded-full text-grey-400 transition-colors hover:bg-grey-100 hover:text-grey-700"
-            title="홈으로"
-          >
-            <Ic d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4|M16 17l5-5-5-5|M21 12H9" size={18} />
-          </Link>
-        </div>
+      <div className="border-t border-grey-100 px-2 py-3">
+        <Link
+          href="/"
+          title="런처로 나가기"
+          className="pressable flex flex-col items-center gap-1 rounded-md py-2 text-grey-500 transition-colors hover:bg-grey-100 hover:text-grey-900"
+        >
+          <Ic d={ICON.home} size={18} />
+          <span className="text-[11px] font-semibold tracking-[-0.02em]">나가기</span>
+        </Link>
+        <div className="pt-2 text-center text-[10px] text-grey-400">{version}</div>
       </div>
     </aside>
   );

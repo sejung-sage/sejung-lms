@@ -30,7 +30,7 @@ export default async function AdminSectionPage({
 
   return (
     <AdminShell space={space} slug={slug} active={meta.key} title={meta.title} subtitle={meta.subtitle}>
-      <AdminSection section={meta.key as Exclude<NavKey, "dash">} subject={space.subject ?? "정규"} accent={space.accent_color} />
+      <AdminSection section={meta.key as Exclude<NavKey, "dash">} space={space} />
     </AdminShell>
   );
 }

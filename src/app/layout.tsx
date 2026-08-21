@@ -33,7 +33,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://cdn.jsdelivr.net" crossOrigin="" />
         <link rel="stylesheet" href={PRETENDARD} precedence="default" />
       </head>
-      <body className="min-h-full flex flex-col bg-grey-50 text-grey-900">
+      <body className="min-h-full w-full min-w-0 flex flex-col bg-background text-grey-900">
         {children}
       </body>
     </html>

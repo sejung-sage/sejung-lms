@@ -5,16 +5,27 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* ============================================================
-   Toss Design System 팔레트
-   grey 10단계 + blue(primary) + red/green/yellow(semantic).
-   토스는 컬러를 거의 안 쓴다. 회색 9단계로 위계를 만들고
-   "지금 눌러야 하는 것" 하나에만 파랑을 쓴다.
+   세정 LMS 디자인 토큰
+
+   출처 두 개를 합친 것:
+     · 색/타이포  — sejung-school-crawling 레퍼런스 (토스 계열)
+     · 레이아웃    — 대치온 CRM (밀도 높은 표 + 칩 중심 상태 표현)
+
+   레퍼런스와 다른 점은 딱 두 가지다.
+     ① green 을 토큰으로 승격 (#047857) — 레퍼런스는 .pill.ok 에 인라인으로만 썼다.
+        우리는 '통과/제출/출석'이 상시 상태라 토큰이 필요하다.
+     ② yellow 를 버리고 amber(#c86e00)로 간다. 기존 yellow-500(#ffc845)은
+        흰 배경 위 글자로 쓰면 대비 1.8:1 로 못 읽는다. amber 는 5.6:1.
    ============================================================ */
 :root {
-  /* grey — 텍스트/배경/보더 전부 여기서 나온다 */
+  /* ── grey : 텍스트/배경/보더가 전부 여기서 나온다 ────────
+     레퍼런스의 의미 이름과 1:1 대응:
+       50=panel  100=hover/line-2  200=line  250=grey-press
+       500=ink-3  700=ink-2  900=ink                          */
   --tds-grey-50: #f9fafb;
   --tds-grey-100: #f2f4f6;
   --tds-grey-200: #e5e8eb;
+  --tds-grey-250: #e1e4e8;
   --tds-grey-300: #d1d6db;
   --tds-grey-400: #b0b8c1;
   --tds-grey-500: #8b95a1;
@@ -23,43 +34,50 @@
   --tds-grey-800: #333d4b;
   --tds-grey-900: #191f28;
 
-  /* blue — primary */
+  /* ── blue : primary ─────────────────────────────────── */
   --tds-blue-50: #f4f8ff;
-  --tds-blue-100: #e8f3ff;
-  --tds-blue-200: #c9e2ff;
+  --tds-blue-100: #e8f3ff; /* blue-soft */
+  --tds-blue-200: #bfdbfe; /* 연한 파랑 위의 보더 (레퍼런스 .acaPanel) */
   --tds-blue-300: #90c2ff;
   --tds-blue-400: #64a8ff;
-  --tds-blue-500: #3182f6; /* Toss Blue */
-  --tds-blue-600: #1b64da;
+  --tds-blue-500: #3182f6; /* blue */
+  --tds-blue-600: #1b64da; /* blue-hover / navy — 큰 숫자에 쓰는 색 */
   --tds-blue-700: #1957c2;
 
-  /* semantic */
-  --tds-red-50: #fff5f6;
+  /* ── semantic ───────────────────────────────────────── */
+  --tds-red-50: #fef1f2; /* red-soft */
   --tds-red-100: #ffe8ea;
   --tds-red-500: #f04452;
   --tds-red-600: #e02936;
 
-  --tds-green-50: #f0fbf6;
-  --tds-green-100: #e0f8ee;
-  --tds-green-500: #15c47e;
-  --tds-green-600: #0eab6c;
+  --tds-amber-50: #fff8e8; /* amber-soft */
+  --tds-amber-100: #fdf0d0;
+  --tds-amber-500: #c86e00; /* amber — 글자로 써도 되는 어두운 호박색 */
+  --tds-amber-600: #a85c00;
 
-  --tds-yellow-50: #fffaf0;
-  --tds-yellow-100: #fff3d9;
-  --tds-yellow-500: #ffc845;
-  --tds-yellow-600: #f0a80a;
+  --tds-green-50: #ecfdf5;
+  --tds-green-100: #d3f5e5;
+  --tds-green-500: #047857; /* 글자 대비 5.9:1 */
+  --tds-green-600: #036045;
 
-  --background: var(--tds-grey-50);
+  /* ── 표면 ───────────────────────────────────────────
+     레퍼런스는 '흰 바탕 + 회색 패널'이다.
+     (이전 우리 설정은 반대로 '회색 바탕 + 흰 카드'였다) */
+  --bg: #ffffff;
+  --panel: var(--tds-grey-50);
+  --background: var(--bg);
   --foreground: var(--tds-grey-900);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-panel: var(--panel);
 
   --color-grey-50: var(--tds-grey-50);
   --color-grey-100: var(--tds-grey-100);
   --color-grey-200: var(--tds-grey-200);
+  --color-grey-250: var(--tds-grey-250);
   --color-grey-300: var(--tds-grey-300);
   --color-grey-400: var(--tds-grey-400);
   --color-grey-500: var(--tds-grey-500);
@@ -68,7 +86,6 @@
   --color-grey-800: var(--tds-grey-800);
   --color-grey-900: var(--tds-grey-900);
 
-  /* 기본 blue/red/green/yellow 도 TDS 값으로 덮어쓴다 */
   --color-blue-50: var(--tds-blue-50);
   --color-blue-100: var(--tds-blue-100);
   --color-blue-200: var(--tds-blue-200);
@@ -83,30 +100,37 @@
   --color-red-500: var(--tds-red-500);
   --color-red-600: var(--tds-red-600);
 
+  --color-amber-50: var(--tds-amber-50);
+  --color-amber-100: var(--tds-amber-100);
+  --color-amber-500: var(--tds-amber-500);
+  --color-amber-600: var(--tds-amber-600);
+
   --color-green-50: var(--tds-green-50);
   --color-green-100: var(--tds-green-100);
   --color-green-500: var(--tds-green-500);
   --color-green-600: var(--tds-green-600);
 
-  --color-yellow-50: var(--tds-yellow-50);
-  --color-yellow-100: var(--tds-yellow-100);
-  --color-yellow-500: var(--tds-yellow-500);
-  --color-yellow-600: var(--tds-yellow-600);
-
-  /* 토스 라운딩 — 버튼 12/14, 카드 16, 시트 20 */
+  /* ── 라운딩 : 레퍼런스 스케일 6 / 8 / 12 / 16 / full ──
+     btn·card 별칭은 기존 컴포넌트가 쓰고 있어 남겨둔다. */
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
   --radius-btn: 12px;
   --radius-btn-lg: 14px;
   --radius-card: 16px;
   --radius-sheet: 20px;
 
-  /* 토스는 그림자를 거의 안 쓴다. 쓰더라도 1px 수준. */
-  --shadow-toss: 0 1px 2px rgba(25, 31, 40, 0.04);
+  /* 그림자는 두 단계뿐. 카드에는 쓰지 않고 떠 있는 것(모달/시트/드롭다운)에만. */
+  --shadow-toss: 0 1px 3px rgba(25, 31, 40, 0.04);
   --shadow-toss-float: 0 4px 16px rgba(25, 31, 40, 0.08);
 
   --font-sans: "Pretendard Variable", Pretendard, -apple-system,
-    BlinkMacSystemFont, system-ui, Roboto, "Apple SD Gothic Neo", "Malgun Gothic",
+    BlinkMacSystemFont, system-ui, "Apple SD Gothic Neo", "Malgun Gothic",
     "맑은 고딕", sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  /* 숫자에 별도 mono 폰트를 쓰지 않는다. 같은 폰트 + tabular-nums 로 자릿수만 고정.
+     성적표에 갑자기 다른 폰트가 끼는 걸 막는다. */
+  --font-mono: var(--font-sans);
 }
 
 html {
@@ -117,8 +141,13 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
-  /* 토스 타이포의 핵심: 촘촘한 자간 + 한국어 어절 단위 줄바꿈 */
-  letter-spacing: -0.02em;
+  /* 레퍼런스 기준: 15px / 500 / 1.5 / -0.01em */
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+  /* 점수·등수·전화번호가 행마다 흔들리면 안 된다 → 전역 고정폭 숫자 */
+  font-variant-numeric: tabular-nums;
   word-break: keep-all;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -129,23 +158,41 @@ h1,
 h2,
 h3,
 h4 {
-  letter-spacing: -0.03em;
+  letter-spacing: -0.02em;
 }
 
-/* 숫자 정렬 — 금액·점수·시각처럼 자릿수가 흔들리면 안 되는 곳 */
+/* 큰 숫자(점수·인원·금액) — 26px 급에서는 자간을 한 단계 더 조인다 */
+.numBig {
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* body 에서 이미 tabular-nums 이므로 남겨만 둔다 (기존 사용처 호환) */
 .num {
   font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum";
 }
 
-/* 탭하는 요소의 모바일 하이라이트 제거 (토스 앱 느낌) */
+/* 탭하는 요소의 모바일 하이라이트 제거 */
 button,
 a {
   -webkit-tap-highlight-color: transparent;
+}
+
+/* 누를 때 살짝 눌리는 반응 — 포인터가 없는 기기(터치)에서만.
+   마우스에서는 hover 색 변화가 이미 피드백이라 스케일이 과하다. */
+@media (hover: none) {
+  .pressable:active {
+    transform: scale(0.97);
+  }
 }
 
 /* 포커스 링은 파랑 하나로 통일 */
 :where(button, a, input, select, textarea):focus-visible {
   outline: 2px solid var(--tds-blue-500);
   outline-offset: 2px;
+}
+
+/* 표 안에서는 링이 잘리므로 안쪽으로 */
+:where(td, th) :where(button, a):focus-visible {
+  outline-offset: -2px;
 }

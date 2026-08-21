@@ -21,7 +21,7 @@ export type ButtonSize = "xs" | "sm" | "md" | "lg";
 
 const VARIANT: Record<ButtonVariant, string> = {
   primary: "bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700",
-  secondary: "bg-grey-100 text-grey-700 hover:bg-grey-200 active:bg-grey-300",
+  secondary: "bg-grey-100 text-grey-700 hover:bg-grey-250 active:bg-grey-300",
   weak: "bg-blue-100 text-blue-600 hover:bg-blue-200 active:bg-blue-200",
   outline:
     "bg-white text-grey-700 border border-grey-200 hover:bg-grey-50 active:bg-grey-100",
@@ -30,17 +30,16 @@ const VARIANT: Record<ButtonVariant, string> = {
 };
 
 const SIZE: Record<ButtonSize, string> = {
-  xs: "h-8 rounded-[8px] px-3 text-[13px]",
-  sm: "h-9 rounded-[10px] px-4 text-[14px]",
-  md: "h-11 rounded-btn px-5 text-[15px]",
-  lg: "h-[52px] rounded-btn-lg px-6 text-[17px]",
+  xs: "h-8 rounded-sm px-3 text-[13px]",
+  sm: "h-9 rounded-sm px-4 text-[13.5px]",
+  md: "h-11 rounded-md px-5 text-[15px]",
+  lg: "h-[52px] rounded-lg px-6 text-[16px]",
 };
 
 const BASE =
-  "inline-flex shrink-0 select-none items-center justify-center gap-1.5 " +
+  "pressable inline-flex shrink-0 select-none items-center justify-center gap-1.5 " +
   "font-semibold tracking-[-0.02em] whitespace-nowrap " +
   "transition-[background-color,transform] duration-100 ease-out " +
-  "active:scale-[0.98] " +
   "disabled:pointer-events-none disabled:opacity-40";
 
 export function buttonClass({
@@ -105,7 +104,7 @@ export function ButtonLink({
 /** 화면 하단에 고정되는 토스식 CTA (모바일 앱 화면용) */
 export function StickyCta({ children }: { children: React.ReactNode }) {
   return (
-    <div className="fixed inset-x-0 bottom-0 z-30 mx-auto max-w-md border-t border-grey-100 bg-white px-4 pb-[calc(env(safe-area-inset-bottom)+12px)] pt-3">
+    <div className="fixed inset-x-0 bottom-0 z-30 mx-auto max-w-md border-t border-grey-200 bg-white px-4 pb-[calc(env(safe-area-inset-bottom)+12px)] pt-3">
       {children}
     </div>
   );

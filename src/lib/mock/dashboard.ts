@@ -3,6 +3,8 @@
 
 export type Dashboard = {
   studentCount: number;
+  /** 아래 todaySessions 가 '언제'의 수업인지 — '오늘' 또는 '08-22' */
+  sessionsLabel: string;
   todaySessions: { time: string; title: string; status: "예정" | "진행중" | "완료" }[];
   missingHomework: { student: string; assignment: string; daysLate: number }[];
   gradeSummary: { label: string; value: number; unit: "점" | "%" }[];
@@ -32,6 +34,7 @@ export function mockDashboard(space: { name: string; subject: string | null; slu
 
   return {
     studentCount: rnd(28, 64),
+    sessionsLabel: "오늘",
     todaySessions: [
       { time: "16:00", title: `${space.subject ?? ""} 정규 A반`, status: "완료" },
       { time: "18:00", title: `${space.subject ?? ""} 정규 B반`, status: "진행중" },

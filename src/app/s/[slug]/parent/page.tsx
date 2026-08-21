@@ -10,7 +10,7 @@ export default async function ParentPage({ params }: { params: Promise<{ slug: s
   const space = await getSpaceBySlug(slug);
   if (!space) notFound();
 
-  const data = await getParentHome({ name: space.name, subject: space.subject, slug });
+  const data = await getParentHome(space);
   if (!data) notFound();
 
   return <ParentHome space={space} slug={slug} data={data} />;

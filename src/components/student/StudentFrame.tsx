@@ -16,11 +16,11 @@ export function StudentFrame({
   const initial = space.name.replace(/쌤$/, "").charAt(0) || space.name.charAt(0);
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-md flex-col bg-grey-50 pb-28">
-      <header className="sticky top-0 z-10 flex items-center justify-between bg-grey-50/95 px-5 pb-3 pt-5 backdrop-blur-sm">
+    <div className="mx-auto flex min-h-dvh w-full min-w-0 max-w-md flex-col bg-white pb-28">
+      <header className="sticky top-0 z-10 flex items-center justify-between border-b border-grey-100 bg-white/95 px-5 pb-3 pt-5 backdrop-blur-sm">
         <div className="flex items-center gap-2.5">
           <div
-            className="flex size-9 items-center justify-center rounded-[12px] text-[14px] font-bold text-white"
+            className="flex size-9 items-center justify-center rounded-md text-[14px] font-bold text-white"
             style={{ backgroundColor: accent }}
           >
             {initial}
@@ -50,7 +50,7 @@ export function StudentFrame({
         </div>
       </header>
 
-      <main className="flex-1 space-y-3 px-5 pt-1">{children}</main>
+      <main className="min-w-0 flex-1 space-y-3 px-5 pt-1">{children}</main>
 
       <StudentTabBar slug={slug} active={active} />
     </div>

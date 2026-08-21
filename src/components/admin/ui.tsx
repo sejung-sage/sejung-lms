@@ -28,16 +28,16 @@ const STATUS_TONE: Record<string, Tone> = {
   예정: "grey",
   미제출: "red",
   결석: "red",
-  지각: "yellow",
-  신청: "yellow",
-  대기: "yellow",
+  지각: "amber",
+  신청: "amber",
+  대기: "amber",
 };
 
 export function Badge({ label }: { label: string }) {
   const t = TONE[STATUS_TONE[label] ?? "grey"];
   return (
     <span
-      className={`inline-flex items-center rounded-[6px] px-2 py-1 text-[12px] font-semibold tracking-[-0.02em] ${t.soft} ${t.text}`}
+      className={`inline-flex items-center rounded-xs px-2.5 py-[3px] text-[12px] font-semibold tracking-[-0.02em] ${t.soft} ${t.text}`}
     >
       {label}
     </span>

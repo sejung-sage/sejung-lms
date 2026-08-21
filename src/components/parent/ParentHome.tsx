@@ -11,9 +11,9 @@ export function ParentHome({ space, slug, data }: { space: SpaceDetail; slug: st
   const initial = space.name.replace(/쌤$/, "").charAt(0) || space.name.charAt(0);
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-md flex-col bg-grey-50 pb-10">
+    <div className="mx-auto flex min-h-dvh w-full min-w-0 max-w-md flex-col bg-white pb-10">
       {/* 상단바 */}
-      <header className="sticky top-0 z-10 flex items-center justify-between bg-grey-50/95 px-5 pb-3 pt-5 backdrop-blur-sm">
+      <header className="sticky top-0 z-10 flex items-center justify-between border-b border-grey-100 bg-white/95 px-5 pb-3 pt-5 backdrop-blur-sm">
         <div className="flex items-center gap-2.5">
           <div
             className="flex size-9 items-center justify-center rounded-[12px] text-[14px] font-bold text-white"
