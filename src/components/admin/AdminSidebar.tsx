@@ -40,11 +40,14 @@ const ICON = {
   chart: "M5 21V10|M12 21V4|M19 21v-7",
   video: "M15 10l5-3v10l-5-3z|M3 6h12v12H3z",
   home: "M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4|M16 17l5-5-5-5|M21 12H9",
+  list: "M8 6h13|M8 12h13|M8 18h13|M3 6h.01|M3 12h.01|M3 18h.01",
+  calendar: "M8 2v4|M16 2v4|M3 10h18|M5 4h14a2 2 0 0 1 2 2v14H3V6a2 2 0 0 1 2-2",
 };
 
 export type NavKey =
   | "dash" | "attendance" | "homework" | "makeup"
-  | "students" | "approvals" | "grades" | "videos";
+  | "students" | "approvals" | "grades" | "videos"
+  | "todos" | "clinic";
 
 type Item = {
   key: NavKey;
@@ -63,6 +66,8 @@ function nav(slug: string): Item[][] {
     [
       { key: "attendance", label: "출석", icon: "check", href: `${a}/attendance` },
       { key: "homework", label: "숙제", icon: "book", href: `${a}/homework` },
+      { key: "todos", label: "할 일", icon: "list", href: `${a}/todos` },
+      { key: "clinic", label: "클리닉", icon: "calendar", href: `${a}/clinic` },
       { key: "makeup", label: "보강", icon: "refresh", href: `${a}/makeup` },
     ],
     [

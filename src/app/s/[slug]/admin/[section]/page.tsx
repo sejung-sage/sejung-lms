@@ -9,6 +9,8 @@ export const dynamic = "force-dynamic";
 const META: Record<string, { key: NavKey; title: string; subtitle: string }> = {
   attendance: { key: "attendance", title: "출석 관리", subtitle: "등원 QR·수기 출결을 확인하세요" },
   homework: { key: "homework", title: "숙제 관리", subtitle: "주차별 숙제 제출 현황" },
+  todos: { key: "todos", title: "할 일 관리", subtitle: "재시험·제출·클리닉 예약 미완료 목록" },
+  clinic: { key: "clinic", title: "클리닉 예약", subtitle: "예약·등원·하원·피드백 현황" },
   makeup: { key: "makeup", title: "보강 관리", subtitle: "결석자 보강 배정" },
   students: { key: "students", title: "학생 목록", subtitle: "재원생 검색·상세" },
   approvals: { key: "approvals", title: "계정 승인", subtitle: "앱 가입·예약 승인 큐" },

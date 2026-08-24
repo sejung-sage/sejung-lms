@@ -13,6 +13,7 @@ export type StudentHome = {
   assignmentGrade: { grade: string; desc: string };
   test: { round: string; score: number; max: number; percentile: number; classAvg: number };
   homework: { title: string; sub: string; done: boolean }[];
+  todos: { title: string; sub: string; done: boolean }[];
   notice: { title: string; body: string; teacher: string; date: string };
 };
 
@@ -67,6 +68,11 @@ export function mockStudentHome(space: {
       { title: "오답노트", sub: `${subject} 6회차`, done: true },
       { title: "미니 모의고사 (OMR)", sub: "이번 주 필수", done: true },
       { title: `${subject} 7회차 과제`, sub: "제출 전", done: false },
+    ],
+    todos: [
+      { title: `${subject} 7회차 재시험`, sub: "커트라인 미달 · 예약 필요", done: false },
+      { title: "클리닉 예약", sub: "이번 주 안에 선택", done: false },
+      { title: "오답노트", sub: "제출 완료", done: true },
     ],
     notice: {
       title: "이번 주 숙제 제출 안내",

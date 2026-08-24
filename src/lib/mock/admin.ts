@@ -76,3 +76,39 @@ export function mockApprovals(): ApprovalRow[] {
     { name: "서지안", type: "신규 가입", detail: "학부모 앱 가입 승인 대기", channel: "앱", at: "06-30 21:40" },
   ];
 }
+
+export type TodoRow = {
+  name: string;
+  kind: "재시험" | "온라인 제출" | "클리닉 예약" | "과제" | "설문" | "수동";
+  title: string;
+  due: string;
+  state: "미완료" | "완료" | "면제";
+};
+
+export function mockTodos(subject: string): TodoRow[] {
+  return mockStudents(subject).slice(0, 6).map((s, i) => ({
+    name: s.name,
+    kind: i % 3 === 0 ? "재시험" : i % 3 === 1 ? "클리닉 예약" : "과제",
+    title: i % 3 === 0 ? `${subject} 7회차 재시험 응시` : i % 3 === 1 ? `${subject} 7회차 클리닉 예약` : `${subject} 오답노트`,
+    due: `08-${22 + i}`,
+    state: i === 5 ? "완료" : "미완료",
+  }));
+}
+
+export type ClinicRow = {
+  name: string;
+  session: string;
+  time: string;
+  status: "예약" | "등원" | "하원" | "미등원" | "취소";
+  feedback: string;
+};
+
+export function mockClinicReservations(subject: string): ClinicRow[] {
+  return mockStudents(subject).slice(0, 7).map((s, i) => ({
+    name: s.name,
+    session: `${subject} 재시험 클리닉`,
+    time: `08-${22 + (i % 2)} ${i < 4 ? "18:00" : "20:00"}`,
+    status: i < 2 ? "예약" : i < 4 ? "등원" : i === 4 ? "하원" : "미등원",
+    feedback: i === 4 ? "오답 정리 완료, 2차 재시험 권장" : "—",
+  }));
+}

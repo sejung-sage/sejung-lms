@@ -6,6 +6,7 @@ import type { NavKey } from "./AdminSidebar";
 import type { SpaceDetail } from "@/lib/spaces";
 import {
   getAdminStudents, getAdminAttendance, getAdminHomework, getAdminGrades, getAdminApprovals,
+  getAdminTodos, getAdminClinicReservations,
 } from "@/lib/admin";
 
 /* ── 토스식 테이블 프리미티브 ──────────────────────
@@ -190,6 +191,80 @@ export async function AdminSection({
                 <tr key={r.name} className="transition-colors hover:bg-grey-50">
                   <Td className="font-semibold text-grey-900">{r.name}</Td>
                   <Td className="num text-grey-600">{r.at}</Td>
+                  <Td right><Badge label={r.status} /></Td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </TableCard>
+      </>
+    );
+  }
+
+  /* ── 할 일 관리 ── */
+  if (section === "todos") {
+    const rows = await getAdminTodos(space);
+    if (!rows.length) return <EmptyCard>미완료 할 일이 없어요</EmptyCard>;
+    const open = rows.filter((r) => r.state === "미완료");
+    const retakes = open.filter((r) => r.kind === "재시험").length;
+    const clinic = open.filter((r) => r.kind === "클리닉 예약").length;
+    return (
+      <>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <Stat label="미완료" value={open.length} tint="text-red-500" />
+          <Stat label="재시험" value={retakes} tint="text-amber-500" />
+          <Stat label="클리닉 예약" value={clinic} tint="text-blue-500" />
+          <Stat label="완료/면제" value={rows.length - open.length} tint="text-grey-500" />
+        </div>
+
+        <TableCard title="자동 연쇄 할 일" sub="· 커트라인 미달/제출 누락">
+          <table className="w-full min-w-[680px]">
+            <thead className="border-b border-grey-100">
+              <tr><Th>학생</Th><Th>구분</Th><Th>내용</Th><Th>마감</Th><Th right>상태</Th></tr>
+            </thead>
+            <tbody className="divide-y divide-grey-100">
+              {rows.map((r, i) => (
+                <tr key={`${r.name}-${r.title}-${i}`} className="transition-colors hover:bg-grey-50">
+                  <Td className="font-semibold text-grey-900">{r.name}</Td>
+                  <Td className="text-grey-600">{r.kind}</Td>
+                  <Td className="text-grey-700">{r.title}</Td>
+                  <Td className="num text-grey-600">{r.due}</Td>
+                  <Td right><Badge label={r.state} /></Td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </TableCard>
+      </>
+    );
+  }
+
+  /* ── 클리닉 예약 ── */
+  if (section === "clinic") {
+    const rows = await getAdminClinicReservations(space);
+    if (!rows.length) return <EmptyCard>클리닉 예약이 없어요</EmptyCard>;
+    const count = (st: string) => rows.filter((r) => r.status === st).length;
+    return (
+      <>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <Stat label="예약" value={count("예약")} tint="text-blue-500" />
+          <Stat label="등원" value={count("등원")} tint="text-green-600" />
+          <Stat label="하원" value={count("하원")} tint="text-grey-700" />
+          <Stat label="미등원" value={count("미등원")} tint="text-red-500" />
+        </div>
+
+        <TableCard title="예약·등하원 현황" sub="· 조교 피드백 포함">
+          <table className="w-full min-w-[760px]">
+            <thead className="border-b border-grey-100">
+              <tr><Th>학생</Th><Th>클리닉</Th><Th>시간</Th><Th>피드백</Th><Th right>상태</Th></tr>
+            </thead>
+            <tbody className="divide-y divide-grey-100">
+              {rows.map((r, i) => (
+                <tr key={`${r.name}-${r.time}-${i}`} className="transition-colors hover:bg-grey-50">
+                  <Td className="font-semibold text-grey-900">{r.name}</Td>
+                  <Td className="text-grey-700">{r.session}</Td>
+                  <Td className="num text-grey-600">{r.time}</Td>
+                  <Td className="max-w-[280px] truncate text-grey-600">{r.feedback}</Td>
                   <Td right><Badge label={r.status} /></Td>
                 </tr>
               ))}

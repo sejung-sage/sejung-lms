@@ -80,7 +80,6 @@ export async function getParentHome(space: SpaceDetail): Promise<ParentHome | nu
   const doneN = mineSubs.filter((s) => s === "submitted" || s === "late").length;
 
   const latest = history[history.length - 1];
-  const prev = history[history.length - 2];
   const att = (attRes.data ?? [])[0] as { status: string } | undefined;
 
   /* 성장 기록 — 지어낸 코멘트 대신 실제 회차 간 변화만 적는다 */

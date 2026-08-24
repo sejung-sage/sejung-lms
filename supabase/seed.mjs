@@ -137,9 +137,31 @@ die("parent_links")(
 /* ── 3) 도메인 데이터 (공간별로 지우고 다시) ────── */
 
 const spaceIds = spaces.map((s) => s.id);
-// 자식이 먼저 (FK 순서). exam_results/submissions 는 부모 삭제로 cascade 된다.
-for (const t of ["todos", "attendance", "clinics", "notices", "assignments", "exams", "sessions", "classes", "enrollments"]) {
+// 자식이 먼저 (FK 순서). space_id 가 있는 테이블만 범위 삭제하고,
+// 그렇지 않은 테이블은 전체 삭제로 멱등성을 맞춘다.
+for (const t of [
+  "magic_links",
+  "clinic_reservations",
+  "clinic_sessions",
+  "todos",
+  "retakes",
+  "student_memos",
+  "attendance",
+  "clinics",
+  "notices",
+  "assignments",
+  "exams",
+  "sessions",
+  "classes",
+  "enrollments",
+]) {
   die(`wipe ${t}`)(await db.from(t).delete().in("space_id", spaceIds));
+}
+for (const t of ["exam_answers", "exam_questions"]) {
+  const rows = die(`wipe ${t} ids`)(await db.from(t).select("id"));
+  if (rows.length) {
+    die(`wipe ${t}`)(await db.from(t).delete().in("id", rows.map((r) => r.id)));
+  }
 }
 
 const SUBJECT_EXAMS = {
@@ -171,7 +193,19 @@ const SAT = (() => {
 const isPast = (i) => SAT[i].getTime() < NOW.getTime();
 const ymd = (d) => d.toISOString().slice(0, 10);
 
-let stats = { classes: 0, sessions: 0, exams: 0, results: 0, subs: 0, att: 0, todos: 0 };
+let stats = {
+  classes: 0,
+  sessions: 0,
+  exams: 0,
+  questions: 0,
+  answers: 0,
+  results: 0,
+  subs: 0,
+  att: 0,
+  todos: 0,
+  retakes: 0,
+  clinicReservations: 0,
+};
 
 for (const [si, space] of spaces.entries()) {
   const subject = space.subject ?? "정규";
@@ -240,27 +274,68 @@ for (const [si, space] of spaces.entries()) {
     title: `${sess.session_no}회차 ${examNames[sess.session_no % examNames.length]}`,
     exam_type: examNames[sess.session_no % examNames.length],
     max_score: 30,
+    cutoff_score: 21,
+    score_status: isPast(sess.session_no - 1) ? "open" : "closed",
     exam_date: ymd(SAT[sess.session_no - 1]),
   }));
   const exams = die("exams")(await db.from("exams").insert(examRows).select("id, title, exam_date"));
   stats.exams += exams.length;
 
+  const questionRows = exams.flatMap((ex) =>
+    Array.from({ length: 10 }, (_, i) => ({
+      exam_id: ex.id,
+      question_no: i + 1,
+      points: 3,
+      correct_answers: [String((i % 5) + 1)],
+      choices: ["1", "2", "3", "4", "5"],
+      concept_tags: [topics[Math.min(i, topics.length - 1)]],
+    })),
+  );
+  const questions = die("exam_questions")(
+    await db.from("exam_questions").insert(questionRows).select("id, exam_id, question_no"),
+  );
+  stats.questions += questions.length;
+  const questionsByExam = new Map();
+  for (const q of questions) {
+    const arr = questionsByExam.get(q.exam_id) ?? [];
+    arr.push(q);
+    questionsByExam.set(q.exam_id, arr);
+  }
+
   const resultRows = [];
+  const answerRows = [];
   exams.forEach((ex, i) => {
     // 아직 안 치른 차시는 채점 결과가 없다
     if (!isPast(i)) return;
     for (const st of roster) {
       const rnd = seeded(`${space.slug}${st.name}${ex.id}score`);
+      const score = rnd(14, 30);
       resultRows.push({
         exam_id: ex.id,
         student_id: st.id,
-        score: rnd(14, 30),
+        score,
         graded_at: new Date(SAT[i].getTime() + 864e5).toISOString(),
       });
+
+      const correctCount = Math.max(0, Math.min(10, Math.round(score / 3)));
+      for (const q of questionsByExam.get(ex.id) ?? []) {
+        const correct = q.question_no <= correctCount;
+        answerRows.push({
+          exam_id: ex.id,
+          question_id: q.id,
+          student_id: st.id,
+          answer: correct ? String(((q.question_no - 1) % 5) + 1) : String((q.question_no % 5) + 1),
+          is_correct: correct,
+          earned_points: correct ? 3 : 0,
+          graded_at: new Date(SAT[i].getTime() + 864e5).toISOString(),
+        });
+      }
     }
   });
   die("exam_results")(await db.from("exam_results").insert(resultRows));
+  die("exam_answers")(await db.from("exam_answers").insert(answerRows));
   stats.results += resultRows.length;
+  stats.answers += answerRows.length;
 
   // 과제
   const asgRows = aSessions.map((sess) => ({
@@ -289,7 +364,7 @@ for (const [si, space] of spaces.entries()) {
   die("submissions")(await db.from("submissions").insert(subRows));
   stats.subs += subRows.length;
 
-  // 클리닉
+  // 구형 클리닉 테이블: 기존 화면 호환용
   die("clinics")(
     await db.from("clinics").insert([
       { space_id: space.id, student_id: roster[4].id, reason: `${topics[6]} 보강`, status: "requested" },
@@ -299,6 +374,83 @@ for (const [si, space] of spaces.entries()) {
         scheduled_at: new Date(SAT[6].getTime() + 2 * 864e5).toISOString() },
     ]),
   );
+
+  // M1 클리닉 세션/예약
+  const clinicSessions = die("clinic_sessions")(
+    await db.from("clinic_sessions").insert([
+      {
+        space_id: space.id,
+        class_id: aClassId,
+        title: `${subject} 재시험 클리닉`,
+        location: "세정학원 대치 2층 클리닉룸",
+        starts_at: new Date(SAT[7].getTime() + 2 * 864e5).toISOString(),
+        ends_at: new Date(SAT[7].getTime() + 2 * 864e5 + 2 * 3600e3).toISOString(),
+        capacity: 8,
+      },
+      {
+        space_id: space.id,
+        class_id: aClassId,
+        title: `${subject} 오답 클리닉`,
+        location: "세정학원 대치 2층 클리닉룸",
+        starts_at: new Date(SAT[7].getTime() + 4 * 864e5).toISOString(),
+        ends_at: new Date(SAT[7].getTime() + 4 * 864e5 + 2 * 3600e3).toISOString(),
+        capacity: 8,
+      },
+    ]).select("id, title, starts_at"),
+  );
+
+  const retakes = die("retakes select")(
+    await db.from("retakes").select("id, student_id").eq("space_id", space.id).limit(6),
+  );
+  stats.retakes += retakes.length;
+
+  const uniqueRetakes = [];
+  const seenRetakeStudents = new Set();
+  for (const r of retakes) {
+    if (seenRetakeStudents.has(r.student_id)) continue;
+    seenRetakeStudents.add(r.student_id);
+    uniqueRetakes.push(r);
+  }
+
+  const reservationRows = uniqueRetakes.slice(0, 4).map((r, i) => ({
+    space_id: space.id,
+    clinic_session_id: clinicSessions[i % clinicSessions.length].id,
+    student_id: r.student_id,
+    retake_id: r.id,
+    status: i === 0 ? "reserved" : i === 1 ? "arrived" : i === 2 ? "departed" : "no_show",
+    arrived_at: i >= 1 && i <= 2 ? new Date(SAT[7].getTime() + 2 * 864e5 + 10 * 60e3).toISOString() : null,
+    departed_at: i === 2 ? new Date(SAT[7].getTime() + 2 * 864e5 + 90 * 60e3).toISOString() : null,
+    feedback: i === 2 ? "오답 정리 완료, 같은 유형 5문항 추가 풀이 필요" : null,
+  }));
+  const reservations = reservationRows.length
+    ? die("clinic_reservations")(await db.from("clinic_reservations").insert(reservationRows).select("id, student_id"))
+    : [];
+  stats.clinicReservations += reservations.length;
+
+  if (reservations.length) {
+    die("magic_links")(
+      await db.from("magic_links").insert(
+        reservations.flatMap((r, i) => [
+          {
+            token: `${space.slug}-clinic-arrived-${i + 1}`,
+            space_id: space.id,
+            action: "clinic_arrived",
+            student_id: r.student_id,
+            target_id: r.id,
+            expires_at: new Date(SAT[7].getTime() + 14 * 864e5).toISOString(),
+          },
+          {
+            token: `${space.slug}-clinic-departed-${i + 1}`,
+            space_id: space.id,
+            action: "clinic_departed",
+            student_id: r.student_id,
+            target_id: r.id,
+            expires_at: new Date(SAT[7].getTime() + 14 * 864e5).toISOString(),
+          },
+        ]),
+      ),
+    );
+  }
 
   // 공지
   die("notices")(
@@ -312,21 +464,15 @@ for (const [si, space] of spaces.entries()) {
     ]),
   );
 
-  // 할 일 — 자동 연쇄가 만들 것들을 미리 흉내낸다 (커트라인 미달 / 미제출)
-  const todoRows = [
-    { space_id: space.id, student_id: roster[0].id, kind: "retake",
-      title: `7회차 ${examNames[1]} 재시험`, body: "커트라인 미달 — 재응시 필요", state: "open" },
-    { space_id: space.id, student_id: roster[3].id, kind: "online_submit",
-      title: `${subject} 7회차 과제 온라인 제출`, state: "open" },
-    { space_id: space.id, student_id: roster[5].id, kind: "clinic_reserve",
-      title: "클리닉 예약 필요", body: "재시험 미응시", state: "open" },
-  ];
-  die("todos")(await db.from("todos").insert(todoRows));
-  stats.todos += todoRows.length;
+  const todos = die("todos select")(
+    await db.from("todos").select("id").eq("space_id", space.id),
+  );
+  stats.todos += todos.length;
 }
 
 console.log(
   `seed OK — branches ${BRANCHES.length} / spaces ${spaces.length} / students ${students.length}\n` +
   `  classes ${stats.classes} · sessions ${stats.sessions} · attendance ${stats.att}\n` +
-  `  exams ${stats.exams} · results ${stats.results} · submissions ${stats.subs} · todos ${stats.todos}`,
+  `  exams ${stats.exams} · questions ${stats.questions} · answers ${stats.answers} · results ${stats.results}\n` +
+  `  submissions ${stats.subs} · todos ${stats.todos} · retakes ${stats.retakes} · clinic reservations ${stats.clinicReservations}`,
 );

@@ -40,7 +40,7 @@ const InfoRow = ({ label, value }: { label: string; value: string }) => (
 
 export function StudentHome({ space, slug, data }: { space: SpaceDetail; slug: string; data: StudentHomeData }) {
   const w = data.thisWeek;
-  const doneCount = data.homework.filter((h) => h.done).length;
+  const doneCount = data.todos.filter((h) => h.done).length;
 
   return (
     <StudentFrame space={space} slug={slug} active="home">
@@ -98,11 +98,11 @@ export function StudentHome({ space, slug, data }: { space: SpaceDetail; slug: s
         </Card>
       </div>
 
-      {/* 이번 주 숙제 */}
-      <SectionHeading right={`${doneCount}/${data.homework.length} 완료`}>이번 주 숙제</SectionHeading>
+      {/* 오늘 할 일 */}
+      <SectionHeading right={`${doneCount}/${data.todos.length} 완료`}>오늘 할 일</SectionHeading>
       <Card padded={false}>
         <ul className="divide-y divide-grey-100">
-          {data.homework.map((h, i) => (
+          {data.todos.map((h, i) => (
             <li key={i} className="flex items-center justify-between gap-3 px-5 py-4">
               <div className="flex min-w-0 items-center gap-3">
                 <CheckCircle done={h.done} />

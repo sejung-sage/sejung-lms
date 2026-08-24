@@ -20,6 +20,7 @@ export function SectionTitle({
 
 /** 학원 도메인 상태값 → 토스 4색(파랑/초록/빨강/회색) 매핑 */
 const STATUS_TONE: Record<string, Tone> = {
+  // 수업·제출
   진행중: "blue",
   출석: "green",
   제출: "green",
@@ -31,6 +32,15 @@ const STATUS_TONE: Record<string, Tone> = {
   지각: "amber",
   신청: "amber",
   대기: "amber",
+  // 할 일
+  미완료: "red",
+  면제: "grey",
+  // 클리닉 예약
+  예약: "blue",
+  등원: "green",
+  하원: "grey",
+  미등원: "red",
+  취소: "grey",
 };
 
 export function Badge({ label }: { label: string }) {

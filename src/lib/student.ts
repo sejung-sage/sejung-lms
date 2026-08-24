@@ -82,11 +82,13 @@ export async function getStudentHome(space: SpaceDetail): Promise<StudentHome | 
   const subject = space.subject ?? "정규";
   const now = Date.now();
 
-  const [sessionRes, asgRes, noticeRes, exams] = await Promise.all([
+  const [sessionRes, asgRes, todoRes, noticeRes, exams] = await Promise.all([
     db.from("sessions").select("session_no, title, scheduled_at, concept_tags, classes(title, description)")
       .eq("space_id", space.id).order("scheduled_at", { ascending: true }),
     db.from("assignments").select("id, title, description, due_date, submissions(student_id, status)")
       .eq("space_id", space.id).order("due_date", { ascending: false }).limit(6),
+    db.from("todos").select("kind, title, due_at, state")
+      .eq("space_id", space.id).eq("student_id", viewer.id).order("state", { ascending: true }).order("due_at", { ascending: true }).limit(6),
     db.from("notices").select("title, body, created_at")
       .eq("space_id", space.id).order("created_at", { ascending: false }).limit(1),
     examHistory(db, space.id, viewer.id),
@@ -122,6 +124,21 @@ export async function getStudentHome(space: SpaceDetail): Promise<StudentHome | 
     };
   });
 
+  type TodoRow = { kind: string; title: string; due_at: string | null; state: string };
+  const todoLabel: Record<string, string> = {
+    retake: "재시험",
+    online_submit: "온라인 제출",
+    clinic_reserve: "클리닉 예약",
+    assignment: "과제",
+    survey: "설문",
+    custom: "할 일",
+  };
+  const todos = ((todoRes.data ?? []) as TodoRow[]).map((t) => ({
+    title: t.title,
+    sub: `${todoLabel[t.kind] ?? "할 일"}${t.due_at ? ` · ${t.due_at.slice(5, 10)}까지` : ""}`,
+    done: t.state !== "open",
+  }));
+
   /* ── 과제 수행 등급 ──
      분모는 '마감이 지난 과제'만. 아직 마감 전인 과제를 미제출로 세면
      성실한 학생도 D등급으로 떨어진다. */
@@ -156,6 +173,7 @@ export async function getStudentHome(space: SpaceDetail): Promise<StudentHome | 
         }
       : { round: "응시한 시험 없음", score: 0, max: 0, percentile: 0, classAvg: 0 },
     homework,
+    todos: todos.length ? todos : homework,
     notice: notice
       ? {
           title: notice.title,

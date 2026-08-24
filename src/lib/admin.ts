@@ -1,7 +1,9 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   mockStudents, mockAttendance, mockHomework, mockGrades, mockApprovals,
+  mockTodos, mockClinicReservations,
   type Student, type AttendanceRow, type HwRow, type GradeRow, type ApprovalRow,
+  type TodoRow, type ClinicRow,
 } from "@/lib/mock/admin";
 import type { SpaceDetail } from "@/lib/spaces";
 
@@ -211,4 +213,83 @@ export async function getAdminApprovals(space: SpaceDetail): Promise<ApprovalRow
   return [];
 }
 
-export type { Student, AttendanceRow, HwRow, GradeRow, ApprovalRow };
+/* ── 할 일 : 자동 연쇄가 만든 미완료 항목 ───────── */
+
+const TODO_KIND: Record<string, TodoRow["kind"]> = {
+  retake: "재시험",
+  online_submit: "온라인 제출",
+  clinic_reserve: "클리닉 예약",
+  assignment: "과제",
+  survey: "설문",
+  custom: "수동",
+};
+const TODO_STATE: Record<string, TodoRow["state"]> = {
+  open: "미완료",
+  done: "완료",
+  waived: "면제",
+};
+
+export async function getAdminTodos(space: SpaceDetail): Promise<TodoRow[]> {
+  if (useMock) return mockTodos(space.subject ?? "정규");
+  if (!space.id) return [];
+
+  const { data } = await db()
+    .from("todos")
+    .select("kind, title, due_at, state, students!inner(name)")
+    .eq("space_id", space.id)
+    .order("state", { ascending: true })
+    .order("due_at", { ascending: true })
+    .limit(80);
+
+  type Row = {
+    kind: string; title: string; due_at: string | null; state: string;
+    students: { name: string } | { name: string }[];
+  };
+  return ((data ?? []) as Row[]).map((r) => ({
+    name: one(r.students)!.name,
+    kind: TODO_KIND[r.kind] ?? "수동",
+    title: r.title,
+    due: r.due_at ? r.due_at.slice(5, 10) : "—",
+    state: TODO_STATE[r.state] ?? "미완료",
+  }));
+}
+
+/* ── 클리닉 예약 : 오늘 이후 예약/등하원 현황 ───── */
+
+const CLINIC_STATUS: Record<string, ClinicRow["status"]> = {
+  reserved: "예약",
+  arrived: "등원",
+  departed: "하원",
+  no_show: "미등원",
+  canceled: "취소",
+};
+
+export async function getAdminClinicReservations(space: SpaceDetail): Promise<ClinicRow[]> {
+  if (useMock) return mockClinicReservations(space.subject ?? "정규");
+  if (!space.id) return [];
+
+  const { data } = await db()
+    .from("clinic_reservations")
+    .select("status, feedback, students!inner(name), clinic_sessions!inner(title, starts_at)")
+    .eq("space_id", space.id)
+    .order("created_at", { ascending: false })
+    .limit(80);
+
+  type Row = {
+    status: string; feedback: string | null;
+    students: { name: string } | { name: string }[];
+    clinic_sessions: { title: string; starts_at: string } | { title: string; starts_at: string }[];
+  };
+  return ((data ?? []) as Row[]).map((r) => {
+    const s = one(r.clinic_sessions)!;
+    return {
+      name: one(r.students)!.name,
+      session: s.title,
+      time: `${s.starts_at.slice(5, 10)} ${hhmm(s.starts_at)}`,
+      status: CLINIC_STATUS[r.status] ?? "예약",
+      feedback: r.feedback ?? "—",
+    };
+  });
+}
+
+export type { Student, AttendanceRow, HwRow, GradeRow, ApprovalRow, TodoRow, ClinicRow };
