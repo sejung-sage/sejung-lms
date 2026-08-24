@@ -85,7 +85,7 @@ function TabIcon({ name, active }: { name: StudentTab; active: boolean }) {
 
 export function StudentTabBar({ slug, active }: { slug: string; active: StudentTab }) {
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-20 mx-auto max-w-md border-t border-grey-200 bg-white">
+    <nav className="sticky bottom-0 z-20 border-t border-grey-200 bg-white">
       <ul className="flex items-stretch justify-around px-2 pb-[calc(env(safe-area-inset-bottom)+8px)] pt-2">
         {TABS.map((t) => {
           const on = t.key === active;

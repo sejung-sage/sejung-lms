@@ -56,7 +56,7 @@ export function TeacherDashboard({
         ))}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid items-start gap-4 lg:grid-cols-2">
         {/* 오늘 수업 */}
         <Card>
           <SectionTitle>{data.sessionsLabel} 수업 현황</SectionTitle>
@@ -114,7 +114,7 @@ export function TeacherDashboard({
       </Card>
 
       {/* 승인 대기 + 클리닉 + 공지 */}
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid items-start gap-4 lg:grid-cols-3">
         <Card>
           <SectionTitle right={`${data.approvals.length}건`}>예약·계정 승인 대기</SectionTitle>
           <ul className="divide-y divide-grey-100">

@@ -21,6 +21,11 @@ const MOBILE_NAV: { key: NavKey; label: string; path: string }[] = [
   { key: "videos", label: "영상", path: "/admin/videos" },
 ];
 
+/** 헤더와 본문이 같은 폭·같은 좌우 여백을 쓴다.
+    상한을 두는 이유: 1920px 에서 표 한 줄이 1800px 까지 늘어나면
+    이름은 맨 왼쪽, 상태 배지는 맨 오른쪽이라 눈이 너무 멀리 간다. */
+const INNER = "mx-auto w-full max-w-[1600px] px-5";
+
 export function AdminShell({
   space,
   slug,
@@ -54,7 +59,7 @@ export function AdminShell({
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-10 border-b border-grey-200 bg-white">
-          <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5">
+          <div className={`${INNER} flex flex-wrap items-center justify-between gap-3 py-3.5`}>
             <div className="flex min-w-0 items-center gap-2.5">
               <div
                 className="flex size-8 shrink-0 items-center justify-center rounded-sm text-[13px] font-bold text-white md:hidden"
@@ -86,7 +91,7 @@ export function AdminShell({
           </div>
 
           {/* 레일이 사라지는 좁은 화면에서의 대체 내비 */}
-          <nav className="flex gap-1.5 overflow-x-auto px-5 pb-2.5 md:hidden">
+          <nav className={`${INNER} flex gap-1.5 overflow-x-auto pb-2.5 md:hidden`}>
             {MOBILE_NAV.map((n) => {
               const on = n.key === active;
               return (
@@ -105,7 +110,9 @@ export function AdminShell({
           </nav>
         </header>
 
-        <main className="flex-1 space-y-4 overflow-y-auto p-5">{children}</main>
+        <main className="flex-1 overflow-y-auto py-5">
+          <div className={`${INNER} space-y-4`}>{children}</div>
+        </main>
       </div>
     </div>
   );

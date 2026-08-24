@@ -16,7 +16,8 @@ export function StudentFrame({
   const initial = space.name.replace(/쌤$/, "").charAt(0) || space.name.charAt(0);
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full min-w-0 max-w-md flex-col bg-white pb-28">
+    <div className="flex min-h-dvh w-full min-w-0 justify-center bg-white sm:bg-grey-100">
+      <div className="flex min-h-dvh w-full min-w-0 max-w-md flex-col border-grey-200 bg-white sm:border-x">
       <header className="sticky top-0 z-10 flex items-center justify-between border-b border-grey-100 bg-white/95 px-5 pb-3 pt-5 backdrop-blur-sm">
         <div className="flex items-center gap-2.5">
           <div
@@ -50,9 +51,10 @@ export function StudentFrame({
         </div>
       </header>
 
-      <main className="min-w-0 flex-1 space-y-3 px-5 pt-1">{children}</main>
+      <main className="min-w-0 flex-1 space-y-3 px-5 pb-4 pt-1">{children}</main>
 
-      <StudentTabBar slug={slug} active={active} />
+        <StudentTabBar slug={slug} active={active} />
+      </div>
     </div>
   );
 }
