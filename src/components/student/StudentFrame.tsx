@@ -4,12 +4,14 @@ import { ButtonLink } from "@/components/ui/Button";
 
 /** 학생 앱 공용 프레임: 상단바 + 콘텐츠 + 하단 탭. */
 export function StudentFrame({
-  space, slug, active, pageLabel, children,
+  space, slug, active, pageLabel, preview = false, children,
 }: {
   space: SpaceDetail;
   slug: string;
   active: StudentTab;
   pageLabel?: string;
+  /** 운영진이 학생 화면을 들여다보는 중 — 관리자 뷰 버튼과 안내 띠를 보여준다 */
+  preview?: boolean;
   children: React.ReactNode;
 }) {
   const accent = space.accent_color;
@@ -35,9 +37,15 @@ export function StudentFrame({
         </div>
 
         <div className="flex items-center gap-1.5">
-          <ButtonLink href={`/s/${slug}`} variant="secondary" size="xs">
-            관리자 뷰
-          </ButtonLink>
+          {preview ? (
+            <ButtonLink href={`/s/${slug}`} variant="secondary" size="xs">
+              관리자 뷰
+            </ButtonLink>
+          ) : (
+            <ButtonLink href="/" variant="secondary" size="xs">
+              선생님 목록
+            </ButtonLink>
+          )}
           <button
             type="button"
             aria-label="알림"
@@ -51,6 +59,11 @@ export function StudentFrame({
         </div>
       </header>
 
+      {preview && (
+        <div className="bg-amber-50 px-5 py-2 text-[12.5px] font-medium text-amber-500">
+          운영진 미리보기 · 이 공간 첫 학생의 화면이에요. 제출 같은 동작은 막혀 있어요.
+        </div>
+      )}
       <main className="min-w-0 flex-1 space-y-3 px-5 pb-4 pt-1">{children}</main>
 
         <StudentTabBar slug={slug} active={active} />

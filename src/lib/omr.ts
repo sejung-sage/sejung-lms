@@ -1,6 +1,5 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { resolveViewer } from "@/lib/student";
 import { gradeSheet, type GradeQuestion } from "@/lib/omr-grade";
 import type { SpaceDetail } from "@/lib/spaces";
 
@@ -191,11 +190,9 @@ export type StudentOmrRow = {
   submittedAt: string | null;
 };
 
-export async function getStudentOmrList(space: SpaceDetail) {
+export async function getStudentOmrList(space: SpaceDetail, viewer: { id: string; name: string }) {
   if (!omrAvailable || !space.id) return null;
   const client = db();
-  const viewer = await resolveViewer(client, space.id);
-  if (!viewer) return null;
 
   const { data } = await client
     .from("exams")
@@ -226,11 +223,11 @@ export async function getStudentOmrList(space: SpaceDetail) {
   return { viewer, rows };
 }
 
-export async function getStudentOmrSheet(space: SpaceDetail, examId: string) {
+export async function getStudentOmrSheet(space: SpaceDetail, examId: string, viewer: { id: string; name: string }) {
   if (!omrAvailable || !space.id) return null;
   const client = db();
-  const [viewer, exam] = await Promise.all([resolveViewer(client, space.id), getExamInSpace(space.id, examId)]);
-  if (!viewer || !exam) return null;
+  const exam = await getExamInSpace(space.id, examId);
+  if (!exam) return null;
 
   const [questions, resultRes] = await Promise.all([
     getQuestions(examId, client),

@@ -6,7 +6,7 @@ import { Card, Badge } from "@/components/ui/Card";
 import { ChipTabs } from "@/components/ui/Tabs";
 import { ButtonLink } from "@/components/ui/Button";
 
-export function ParentHome({ space, slug, data }: { space: SpaceDetail; slug: string; data: ParentHomeData }) {
+export function ParentHome({ space, slug, data, preview }: { space: SpaceDetail; slug: string; data: ParentHomeData; preview?: boolean }) {
   const accent = space.accent_color;
   const initial = space.name.replace(/쌤$/, "").charAt(0) || space.name.charAt(0);
 
@@ -28,8 +28,8 @@ export function ParentHome({ space, slug, data }: { space: SpaceDetail; slug: st
           </div>
         </div>
         <div className="flex items-center gap-1.5">
-          <ButtonLink href={`/s/${slug}`} variant="secondary" size="xs">
-            관리자 뷰
+          <ButtonLink href={preview ? `/s/${slug}` : "/account"} variant="secondary" size="xs">
+            {preview ? "관리자 뷰" : "내 계정"}
           </ButtonLink>
           <Link
             href="/"
@@ -43,6 +43,11 @@ export function ParentHome({ space, slug, data }: { space: SpaceDetail; slug: st
           </Link>
         </div>
       </header>
+      {preview && (
+        <div className="bg-amber-50 px-5 py-2 text-[12.5px] font-medium text-amber-500">
+          운영진 미리보기 · 이 공간 첫 학생의 학부모 화면이에요.
+        </div>
+      )}
 
       <main className="flex-1 space-y-3 px-5 pt-1">
         {/* 자녀 스위처 */}

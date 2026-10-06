@@ -9,6 +9,9 @@ import {
   getAdminTodos, getAdminClinicReservations,
 } from "@/lib/admin";
 import { getOmrExamList, omrAvailable } from "@/lib/omr";
+import { getViewer, staffGrant } from "@/lib/auth";
+import { getAccountRoster } from "@/lib/accounts";
+import { AccountsPanel } from "@/components/accounts/AccountsPanel";
 import { OmrExamList } from "@/components/omr/OmrAdmin";
 
 /* ── 토스식 테이블 프리미티브 ──────────────────────
@@ -85,6 +88,9 @@ export async function AdminSection({
   if (section === "students") {
     const rows = await getAdminStudents(space);
     if (!rows.length) return <EmptyCard>등록된 수강생이 없어요</EmptyCard>;
+    const viewer = await getViewer();
+    const canManage = !!viewer && !!staffGrant(viewer, space.id)?.canManage;
+    const accounts = omrAvailable ? await getAccountRoster(space.id) : [];
     return (
       <>
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -128,6 +134,8 @@ export async function AdminSection({
             </tbody>
           </table>
         </TableCard>
+
+        {accounts.length > 0 && <AccountsPanel slug={slug} rows={accounts} canManage={canManage} />}
       </>
     );
   }

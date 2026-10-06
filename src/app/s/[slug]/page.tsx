@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { getSpaceBySlug } from "@/lib/spaces";
+import { requireStaff } from "@/lib/auth";
 import { getDashboard } from "@/lib/dashboard";
 import { TeacherDashboard } from "@/components/TeacherDashboard";
 
@@ -14,6 +15,7 @@ export default async function SpacePage({
   const space = await getSpaceBySlug(slug);
 
   if (!space) notFound();
+  await requireStaff(space, slug);
 
   const dashboard = await getDashboard(space);
 

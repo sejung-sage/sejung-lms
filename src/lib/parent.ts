@@ -5,8 +5,7 @@ import type { SpaceDetail } from "@/lib/spaces";
 /**
  * 학부모 앱 데이터 seam (읽기 전용).
  *
- * ⚠ 학생앱과 같은 이유로 아직 "누구의 학부모인가"를 세션에서 못 가져온다.
- *   이 공간에 자녀가 등록된 보호자 중 첫 명을 골라 보여준다.
+ * 누구의 자녀를 보여줄지는 lib/auth.ts 의 parentContext 가 정한다.
  *
  * 성장 기록/알림은 상담일지 테이블이 아직 없다(PRD M2). 문장을 지어내는 대신
  * 실제 점수·제출·출결 변화에서 사실만 뽑아 만든다.
@@ -18,34 +17,19 @@ const ATT_LABEL: Record<string, string> = {
   absent: "결석", withdrawn: "퇴원", none: "부재", undecided: "미정",
 };
 
-export async function getParentHome(space: SpaceDetail): Promise<ParentHome | null> {
+export async function getParentHome(
+  space: SpaceDetail,
+  forChild: { id: string; name: string },
+  siblings: { id: string; name: string }[] = [],
+): Promise<ParentHome | null> {
   if (useMock) return mockParentHome(space);
   if (!space.id) return null;
 
   const db = createAdminClient();
 
-  // 이 공간의 수강생 → 그 학생들의 보호자
-  const { data: enr } = await db
-    .from("enrollments").select("students!inner(id, name)")
-    .eq("space_id", space.id).eq("status", "active");
-
-  type S = { id: string; name: string };
-  const enrolled: S[] = (enr ?? []).flatMap((r: { students: S | S[] }) =>
-    Array.isArray(r.students) ? r.students : [r.students],
-  );
-  if (!enrolled.length) return null;
-
-  const { data: links } = await db
-    .from("parent_links").select("parent_id, student_id")
-    .in("student_id", enrolled.map((s) => s.id));
-
-  if (!links?.length) return null;
-  const parentId = [...links].sort((a, b) => a.parent_id.localeCompare(b.parent_id))[0].parent_id;
-  const myKids = links.filter((l) => l.parent_id === parentId).map((l) => l.student_id);
-  const children = enrolled.filter((s) => myKids.includes(s.id));
-  if (!children.length) return null;
-
-  const child = children[0];
+  // 누구의 화면인지는 lib/auth.ts 의 parentContext 가 정해서 넘겨준다
+  const child = forChild;
+  const children = siblings.length ? siblings : [forChild];
 
   const [examRes, asgRes, attRes] = await Promise.all([
     db.from("exams").select("title, max_score, exam_date, exam_results(student_id, score)")

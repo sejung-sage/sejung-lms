@@ -19,9 +19,9 @@ export type TeacherSpace = {
  *
  * 마크업은 하나다. 반응형 클래스로만 갈라진다 — 같은 걸 두 번 렌더하지 않으려고.
  */
-export function TeacherIcon({ space }: { space: TeacherSpace }) {
+export function TeacherIcon({ space, href: to }: { space: TeacherSpace; href?: string }) {
   const initial = space.name.replace(/쌤$/, "").charAt(0) || space.name.charAt(0);
-  const href = space.slug ? `/s/${space.slug}` : "#";
+  const href = to ?? (space.slug ? `/s/${space.slug}` : "#");
 
   return (
     <Link

@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { SpaceDetail } from "@/lib/spaces";
 import { AdminSidebar, type NavKey } from "./AdminSidebar";
 import { ButtonLink } from "@/components/ui/Button";
+import { signOut } from "@/app/login/actions";
 
 /**
  * 관리자 웹 레이아웃: 아이콘 레일 + 흰 헤더 + 회색 본문.
@@ -88,6 +89,14 @@ export function AdminShell({
               <ButtonLink href={`/s/${slug}/student`} variant="secondary" size="sm">
                 학생 앱
               </ButtonLink>
+              <ButtonLink href="/account" variant="ghost" size="sm" className="hidden sm:inline-flex">
+                내 계정
+              </ButtonLink>
+              <form action={signOut}>
+                <button type="submit" className="h-9 px-2 text-[13px] font-semibold text-grey-500 hover:text-red-500">
+                  로그아웃
+                </button>
+              </form>
             </div>
           </div>
 

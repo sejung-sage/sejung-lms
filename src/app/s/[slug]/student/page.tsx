@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { getSpaceBySlug } from "@/lib/spaces";
+import { studentContext } from "@/lib/auth";
 import { getStudentHome } from "@/lib/student";
 import { StudentHome } from "@/components/student/StudentHome";
 
@@ -15,9 +16,10 @@ export default async function StudentPage({
 
   if (!space) notFound();
 
-  const data = await getStudentHome(space);
+  const ctx = await studentContext(space, slug);
+  const data = await getStudentHome(space, ctx.student);
 
   if (!data) notFound();
 
-  return <StudentHome space={space} slug={slug} data={data} />;
+  return <StudentHome space={space} slug={slug} data={data} preview={ctx.preview} />;
 }

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getSpaceBySlug } from "@/lib/spaces";
+import { studentContext } from "@/lib/auth";
 import { getStudentOmrList, omrAvailable } from "@/lib/omr";
 import { StudentFrame } from "@/components/student/StudentFrame";
 import { Card, Badge } from "@/components/ui/Card";
@@ -16,10 +17,11 @@ export default async function StudentOmrListPage({
   const space = await getSpaceBySlug(slug);
   if (!space) notFound();
 
-  const data = omrAvailable ? await getStudentOmrList(space) : null;
+  const ctx = await studentContext(space, slug);
+  const data = omrAvailable ? await getStudentOmrList(space, ctx.student) : null;
 
   return (
-    <StudentFrame space={space} slug={slug} active="grade" pageLabel="OMR 답안 제출">
+    <StudentFrame space={space} slug={slug} active="grade" pageLabel="OMR 답안 제출" preview={ctx.preview}>
       {!data || !data.rows.length ? (
         <Card className="py-14 text-center text-[14px] text-grey-500">지금 제출할 시험이 없어요</Card>
       ) : (

@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSpaceBySlug, type SpaceDetail } from "@/lib/spaces";
-import { resolveViewer } from "@/lib/student";
+import { staffForAction, studentForAction } from "@/lib/auth";
 import {
   omrAvailable, getExamInSpace, getQuestions, writeSheet, regradeExam, DEFAULT_CHOICES,
   type OmrExamMeta,
@@ -14,8 +14,10 @@ import { parseAnswerKey, parseKeypad } from "@/lib/omr-grade";
 /**
  * 디지털 OMR 쓰기 액션.
  *
- * ⚠ 아직 로그인이 없다. 지금은 "slug 의 공간 안에 있는 시험·학생인가"까지만 확인한다.
- *   인증이 붙으면 각 액션 맨 앞에서 역할(조교 이상 / 본인 학생)을 확인해야 한다.
+ * 모든 액션은 scope() 에서 먼저 권한을 확인한다.
+ *   staff   : 이 공간 운영진 (시험 만들기·제출 열기)
+ *   grade   : 이 공간 운영진 중 채점 권한이 있는 사람 (정답·점수 쓰기)
+ *   student : 이 공간에 다니는 학생 본인 (운영진 미리보기로는 제출 못 함)
  */
 
 export type ActionState = { ok: boolean; message: string; at?: number };
@@ -23,18 +25,31 @@ export type ActionState = { ok: boolean; message: string; at?: number };
 const fail = (message: string): ActionState => ({ ok: false, message, at: Date.now() });
 const done = (message: string): ActionState => ({ ok: true, message, at: Date.now() });
 
+type Need = "staff" | "grade" | "student";
+
 type Scope =
   | { ok: false; error: string }
-  | { ok: true; space: SpaceDetail; exam: OmrExamMeta | null };
+  | { ok: true; space: SpaceDetail; exam: OmrExamMeta | null; student: { id: string; name: string } | null };
 
-async function scope(slug: string, examId?: string): Promise<Scope> {
+async function scope(slug: string, examId: string | undefined, need: Need): Promise<Scope> {
   if (!omrAvailable) return { ok: false, error: "목 데이터 모드에서는 OMR 을 쓸 수 없어요" };
   const space = await getSpaceBySlug(slug);
   if (!space?.id) return { ok: false, error: "공간을 찾을 수 없어요" };
-  if (!examId) return { ok: true, space, exam: null };
+
+  let student: { id: string; name: string } | null = null;
+  if (need === "student") {
+    student = await studentForAction(space.id);
+    if (!student) return { ok: false, error: "학생 계정으로 로그인해야 제출할 수 있어요" };
+  } else {
+    const st = await staffForAction(space.id);
+    if (!st) return { ok: false, error: "이 공간 운영진만 할 수 있어요" };
+    if (need === "grade" && !st.grant.canGrade) return { ok: false, error: "채점 권한이 없어요" };
+  }
+
+  if (!examId) return { ok: true, space, exam: null, student };
   const exam = await getExamInSpace(space.id, examId);
   if (!exam) return { ok: false, error: "이 공간의 시험이 아니에요" };
-  return { ok: true, space, exam };
+  return { ok: true, space, exam, student };
 }
 
 const adminPath = (slug: string, examId?: string) =>
@@ -43,7 +58,7 @@ const adminPath = (slug: string, examId?: string) =>
 /* ── 시험 만들기 ─────────────────────────────── */
 
 export async function createExam(slug: string, _prev: ActionState, fd: FormData): Promise<ActionState> {
-  const s = await scope(slug);
+  const s = await scope(slug, undefined, "staff");
   if (!s.ok) return fail(s.error);
 
   const title = String(fd.get("title") ?? "").trim();
@@ -70,7 +85,7 @@ export async function createExam(slug: string, _prev: ActionState, fd: FormData)
 export async function saveAnswerKey(
   slug: string, examId: string, _prev: ActionState, fd: FormData,
 ): Promise<ActionState> {
-  const s = await scope(slug, examId);
+  const s = await scope(slug, examId, "grade");
   if (!s.ok) return fail(s.error);
   const exam = s.exam!;
 
@@ -114,7 +129,7 @@ export async function saveAnswerKey(
 /* ── 학생 제출 받기 열기/닫기 ─────────────────────── */
 
 export async function setOmrOpen(slug: string, examId: string, open: boolean): Promise<void> {
-  const s = await scope(slug, examId);
+  const s = await scope(slug, examId, "staff");
   if (!s.ok) return;
   if (open) {
     // 정답이 없는 시험을 열면 학생이 내도 채점할 수 없다
@@ -131,7 +146,7 @@ export async function setOmrOpen(slug: string, examId: string, open: boolean): P
 export async function staffSubmit(
   slug: string, examId: string, _prev: ActionState, fd: FormData,
 ): Promise<ActionState> {
-  const s = await scope(slug, examId);
+  const s = await scope(slug, examId, "grade");
   if (!s.ok) return fail(s.error);
   const exam = s.exam!;
 
@@ -169,14 +184,13 @@ export async function staffSubmit(
 export async function studentSubmit(
   slug: string, examId: string, _prev: ActionState, fd: FormData,
 ): Promise<ActionState> {
-  const s = await scope(slug, examId);
+  const s = await scope(slug, examId, "student");
   if (!s.ok) return fail(s.error);
   const exam = s.exam!;
   if (!exam.omrOpen) return fail("지금은 답안 제출 시간이 아니에요");
 
   const client = createAdminClient();
-  const viewer = await resolveViewer(client, s.space.id);
-  if (!viewer) return fail("학생 정보를 찾을 수 없어요");
+  const viewer = s.student!;
 
   // 학생은 한 번만 낸다. 고칠 일이 있으면 조교가 대리 입력으로 덮어쓴다.
   const { data: prior } = await client
@@ -214,7 +228,7 @@ export type ScannedSheet = { studentId: string; marks: (string | null)[] };
 export async function saveScannedSheets(
   slug: string, examId: string, sheets: ScannedSheet[],
 ): Promise<ActionState> {
-  const s = await scope(slug, examId);
+  const s = await scope(slug, examId, "grade");
   if (!s.ok) return fail(s.error);
   const exam = s.exam!;
   if (!sheets.length) return fail("저장할 답안지가 없어요");

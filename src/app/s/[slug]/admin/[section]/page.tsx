@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { getSpaceBySlug } from "@/lib/spaces";
+import { requireStaff } from "@/lib/auth";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { AdminSection } from "@/components/admin/AdminSection";
 import type { NavKey } from "@/components/admin/AdminSidebar";
@@ -30,6 +31,7 @@ export default async function AdminSectionPage({
 
   const space = await getSpaceBySlug(slug);
   if (!space) notFound();
+  await requireStaff(space, slug);
 
   return (
     <AdminShell space={space} slug={slug} active={meta.key} title={meta.title} subtitle={meta.subtitle}>

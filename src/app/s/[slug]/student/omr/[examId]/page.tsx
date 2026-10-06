@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { getSpaceBySlug } from "@/lib/spaces";
+import { studentContext } from "@/lib/auth";
 import { getStudentOmrSheet } from "@/lib/omr";
 import { StudentFrame } from "@/components/student/StudentFrame";
 import { Card } from "@/components/ui/Card";
@@ -17,12 +18,13 @@ export default async function StudentOmrPage({
   const space = await getSpaceBySlug(slug);
   if (!space) notFound();
 
-  const data = await getStudentOmrSheet(space, examId);
+  const ctx = await studentContext(space, slug);
+  const data = await getStudentOmrSheet(space, examId, ctx.student);
   if (!data) notFound();
   const { exam, questions, submitted } = data;
 
   return (
-    <StudentFrame space={space} slug={slug} active="grade" pageLabel={exam.title}>
+    <StudentFrame space={space} slug={slug} active="grade" pageLabel={exam.title} preview={ctx.preview}>
       {submitted ? (
         <Card className="text-center">
           <div className="text-[13px] font-semibold text-green-500">제출 완료</div>

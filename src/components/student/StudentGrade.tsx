@@ -6,9 +6,9 @@ import { Card, Badge } from "@/components/ui/Card";
 import { SegmentedTabs } from "@/components/ui/Tabs";
 import { OmrEntry } from "@/components/omr/OmrEntry";
 
-export function StudentGrade({ space, slug, data }: { space: SpaceDetail; slug: string; data: StudentGradeData }) {
+export function StudentGrade({ space, slug, data, preview }: { space: SpaceDetail; slug: string; data: StudentGradeData; preview?: boolean }) {
   return (
-    <StudentFrame space={space} slug={slug} active="grade" pageLabel="성적">
+    <StudentFrame space={space} slug={slug} active="grade" pageLabel="성적" preview={preview}>
       {/* 기간 필터 — 토스 세그먼트 탭 */}
       <SegmentedTabs
         className="mt-1"

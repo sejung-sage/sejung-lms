@@ -39,12 +39,12 @@ const InfoRow = ({ label, value }: { label: string; value: string }) => (
   </div>
 );
 
-export function StudentHome({ space, slug, data }: { space: SpaceDetail; slug: string; data: StudentHomeData }) {
+export function StudentHome({ space, slug, data, preview }: { space: SpaceDetail; slug: string; data: StudentHomeData; preview?: boolean }) {
   const w = data.thisWeek;
   const doneCount = data.todos.filter((h) => h.done).length;
 
   return (
-    <StudentFrame space={space} slug={slug} active="home">
+    <StudentFrame space={space} slug={slug} active="home" preview={preview}>
       {/* 오늘/이번 주 수업 — 토스 메인 카드처럼 흰 배경 + 큰 볼드 + 파란 CTA 하나 */}
       <Card>
         <div className="flex items-start justify-between gap-3">

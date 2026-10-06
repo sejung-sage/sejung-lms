@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { getSpaceBySlug } from "@/lib/spaces";
+import { studentContext } from "@/lib/auth";
 import { getStudentGrade } from "@/lib/student";
 import { StudentGrade } from "@/components/student/StudentGrade";
 
@@ -14,8 +15,9 @@ export default async function StudentGradePage({
   const space = await getSpaceBySlug(slug);
   if (!space) notFound();
 
-  const data = await getStudentGrade(space);
+  const ctx = await studentContext(space, slug);
+  const data = await getStudentGrade(space, ctx.student);
   if (!data) notFound();
 
-  return <StudentGrade space={space} slug={slug} data={data} />;
+  return <StudentGrade space={space} slug={slug} data={data} preview={ctx.preview} />;
 }

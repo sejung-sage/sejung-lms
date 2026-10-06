@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { getSpaceBySlug } from "@/lib/spaces";
+import { requireStaff } from "@/lib/auth";
 import { getOmrExamDetail, type OmrQuestion } from "@/lib/omr";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Card } from "@/components/ui/Card";
@@ -37,6 +38,7 @@ export default async function OmrExamPage({
   const { slug, examId } = await params;
   const space = await getSpaceBySlug(slug);
   if (!space) notFound();
+  await requireStaff(space, slug);
 
   const detail = await getOmrExamDetail(space, examId);
   if (!detail) notFound();

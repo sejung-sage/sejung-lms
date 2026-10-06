@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { getSpaceBySlug } from "@/lib/spaces";
+import { studentContext } from "@/lib/auth";
 import { StudentFrame } from "@/components/student/StudentFrame";
 import { Card } from "@/components/ui/Card";
 
@@ -14,9 +15,10 @@ export default async function StudentLearnPage({ params }: { params: Promise<{ s
   const { slug } = await params;
   const space = await getSpaceBySlug(slug);
   if (!space) notFound();
+  const ctx = await studentContext(space, slug);
 
   return (
-    <StudentFrame space={space} slug={slug} active="learn" pageLabel="학습">
+    <StudentFrame space={space} slug={slug} active="learn" pageLabel="학습" preview={ctx.preview}>
       <div className="grid grid-cols-2 gap-3 pt-2">
         {MENUS.map((c) => (
           <Card key={c.t} className="p-5">

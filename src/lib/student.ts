@@ -8,28 +8,13 @@ import type { SpaceDetail } from "@/lib/spaces";
 /**
  * SA 학생앱 데이터 seam.
  *
- * ⚠ 아직 로그인이 없다. 그래서 "누구의 화면인가"를 세션에서 못 가져온다.
- *   임시로 공간의 활성 수강생 중 이름순 첫 명을 골라 보여준다.
- *   인증이 붙으면 resolveViewer() 만 auth.uid() 기준으로 갈아끼우면 된다.
+ * 누구의 화면인지는 lib/auth.ts 의 studentContext 가 정해서 넘겨준다
+ * (학생 본인, 또는 운영진 미리보기면 첫 학생).
  */
 const useMock = process.env.USE_MOCK_DB === "true";
 
 type Db = ReturnType<typeof createAdminClient>;
 type Viewer = { id: string; name: string };
-
-export async function resolveViewer(db: Db, spaceId: string): Promise<Viewer | null> {
-  const { data } = await db
-    .from("enrollments")
-    .select("students!inner(id, name)")
-    .eq("space_id", spaceId)
-    .eq("status", "active");
-
-  const rows = (data ?? []).flatMap((r: { students: Viewer | Viewer[] }) =>
-    Array.isArray(r.students) ? r.students : [r.students],
-  );
-  rows.sort((a, b) => a.name.localeCompare(b.name, "ko"));
-  return rows[0] ?? null;
-}
 
 /** 상위 몇 %인가 — 나보다 높은 점수의 비율 */
 function percentileOf(score: number, all: number[]): number {
@@ -71,13 +56,11 @@ async function examHistory(db: Db, spaceId: string, studentId: string) {
     .filter((e) => e.score != null);
 }
 
-export async function getStudentHome(space: SpaceDetail): Promise<StudentHome | null> {
+export async function getStudentHome(space: SpaceDetail, viewer: Viewer): Promise<StudentHome | null> {
   if (useMock) return mockStudentHome(space);
   if (!space.id) return null;
 
   const db = createAdminClient();
-  const viewer = await resolveViewer(db, space.id);
-  if (!viewer) return null;
 
   const subject = space.subject ?? "정규";
   const now = Date.now();
@@ -185,13 +168,11 @@ export async function getStudentHome(space: SpaceDetail): Promise<StudentHome | 
   };
 }
 
-export async function getStudentGrade(space: SpaceDetail): Promise<StudentGrade | null> {
+export async function getStudentGrade(space: SpaceDetail, viewer: Viewer): Promise<StudentGrade | null> {
   if (useMock) return mockStudentGrade(space);
   if (!space.id) return null;
 
   const db = createAdminClient();
-  const viewer = await resolveViewer(db, space.id);
-  if (!viewer) return null;
 
   const [exams, asgRes] = await Promise.all([
     examHistory(db, space.id, viewer.id),
