@@ -17,7 +17,7 @@ const useMock = process.env.USE_MOCK_DB === "true";
 type Db = ReturnType<typeof createAdminClient>;
 type Viewer = { id: string; name: string };
 
-async function resolveViewer(db: Db, spaceId: string): Promise<Viewer | null> {
+export async function resolveViewer(db: Db, spaceId: string): Promise<Viewer | null> {
   const { data } = await db
     .from("enrollments")
     .select("students!inner(id, name)")

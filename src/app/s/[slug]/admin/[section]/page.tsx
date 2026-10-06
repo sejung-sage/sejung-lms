@@ -15,6 +15,7 @@ const META: Record<string, { key: NavKey; title: string; subtitle: string }> = {
   students: { key: "students", title: "학생 목록", subtitle: "재원생 검색·상세" },
   approvals: { key: "approvals", title: "계정 승인", subtitle: "앱 가입·예약 승인 큐" },
   grades: { key: "grades", title: "성적", subtitle: "주간 성적·총괄시험 집계" },
+  omr: { key: "omr", title: "OMR 채점", subtitle: "정답 등록 · 학생 제출 · 조교 대리 입력" },
   videos: { key: "videos", title: "영상 관리", subtitle: "강의 영상 업로드·배정" },
 };
 
@@ -32,7 +33,7 @@ export default async function AdminSectionPage({
 
   return (
     <AdminShell space={space} slug={slug} active={meta.key} title={meta.title} subtitle={meta.subtitle}>
-      <AdminSection section={meta.key as Exclude<NavKey, "dash">} space={space} />
+      <AdminSection section={meta.key as Exclude<NavKey, "dash">} space={space} slug={slug} />
     </AdminShell>
   );
 }

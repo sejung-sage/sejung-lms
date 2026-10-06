@@ -4,6 +4,7 @@ import { QrGlyph } from "./QrGlyph";
 import { StudentFrame } from "./StudentFrame";
 import { Button } from "@/components/ui/Button";
 import { Card, Badge } from "@/components/ui/Card";
+import { OmrEntry } from "@/components/omr/OmrEntry";
 
 /** 토스식 체크: 완료면 파란 원 + 흰 체크, 아니면 회색 테두리 원 */
 function CheckCircle({ done }: { done: boolean }) {
@@ -68,6 +69,8 @@ export function StudentHome({ space, slug, data }: { space: SpaceDetail; slug: s
           등원 QR 스캔하기
         </Button>
       </Card>
+
+      <OmrEntry slug={slug} />
 
       {/* 이번 주 현황 */}
       <SectionHeading>이번 주 현황</SectionHeading>

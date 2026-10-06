@@ -42,12 +42,13 @@ const ICON = {
   home: "M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4|M16 17l5-5-5-5|M21 12H9",
   list: "M8 6h13|M8 12h13|M8 18h13|M3 6h.01|M3 12h.01|M3 18h.01",
   calendar: "M8 2v4|M16 2v4|M3 10h18|M5 4h14a2 2 0 0 1 2 2v14H3V6a2 2 0 0 1 2-2",
+  omr: "M5 3h14v18H5z|M9 8h.01|M12 8h3|M9 12h.01|M12 12h3|M9 16h.01|M12 16h3",
 };
 
 export type NavKey =
   | "dash" | "attendance" | "homework" | "makeup"
   | "students" | "approvals" | "grades" | "videos"
-  | "todos" | "clinic";
+  | "todos" | "clinic" | "omr";
 
 type Item = {
   key: NavKey;
@@ -76,6 +77,7 @@ function nav(slug: string): Item[][] {
     ],
     [
       { key: "grades", label: "성적", icon: "chart", href: `${a}/grades` },
+      { key: "omr", label: "OMR", icon: "omr", href: `${a}/omr` },
       { key: "videos", label: "영상", icon: "video", href: `${a}/videos` },
     ],
   ];

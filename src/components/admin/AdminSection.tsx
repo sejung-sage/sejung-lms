@@ -8,6 +8,8 @@ import {
   getAdminStudents, getAdminAttendance, getAdminHomework, getAdminGrades, getAdminApprovals,
   getAdminTodos, getAdminClinicReservations,
 } from "@/lib/admin";
+import { getOmrExamList, omrAvailable } from "@/lib/omr";
+import { OmrExamList } from "@/components/omr/OmrAdmin";
 
 /* ── 토스식 테이블 프리미티브 ──────────────────────
    헤더는 대문자 트래킹 대신 얌전한 회색 소문자.
@@ -72,10 +74,11 @@ function EmptyCard({ children }: { children: React.ReactNode }) {
 }
 
 export async function AdminSection({
-  section, space,
+  section, space, slug,
 }: {
   section: Exclude<NavKey, "dash">;
   space: SpaceDetail;
+  slug: string;
 }) {
   const accent = space.accent_color;
   /* ── 학생 목록 ── */
@@ -301,6 +304,14 @@ export async function AdminSection({
         </table>
       </TableCard>
     );
+  }
+
+  /* ── OMR 채점 ── */
+  if (section === "omr") {
+    if (!omrAvailable) return <EmptyCard>OMR 은 실 DB 에서만 동작해요 (USE_MOCK_DB=false)</EmptyCard>;
+    const rows = await getOmrExamList(space);
+    const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
+    return <OmrExamList slug={slug} rows={rows} today={today} />;
   }
 
   /* ── 계정 승인 ── */

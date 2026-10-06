@@ -4,6 +4,7 @@ import { StudentFrame } from "./StudentFrame";
 import { LineChart, Donut } from "./charts";
 import { Card, Badge } from "@/components/ui/Card";
 import { SegmentedTabs } from "@/components/ui/Tabs";
+import { OmrEntry } from "@/components/omr/OmrEntry";
 
 export function StudentGrade({ space, slug, data }: { space: SpaceDetail; slug: string; data: StudentGradeData }) {
   return (
@@ -18,6 +19,8 @@ export function StudentGrade({ space, slug, data }: { space: SpaceDetail; slug: 
           { key: "all", label: "전체" },
         ]}
       />
+
+      <OmrEntry slug={slug} />
 
       {/* 주간보고서 */}
       <h3 className="px-1 pb-1 pt-3 text-[17px] font-bold text-grey-900">주간보고서</h3>
