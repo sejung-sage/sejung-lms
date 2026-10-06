@@ -204,3 +204,45 @@ export async function studentSubmit(
   revalidatePath(`/s/${slug}/student/omr`);
   return done("제출했어요");
 }
+
+/* ── 종이 OMR 스캔 확정 ─────────────────────────
+   인식은 브라우저에서 끝났고, 여기서는 사람이 검수한 결과만 받는다.
+   그래도 서버에서 다시 확인한다: 이 공간 학생인가, 문항 수·선지가 맞는가. */
+
+export type ScannedSheet = { studentId: string; marks: (string | null)[] };
+
+export async function saveScannedSheets(
+  slug: string, examId: string, sheets: ScannedSheet[],
+): Promise<ActionState> {
+  const s = await scope(slug, examId);
+  if (!s.ok) return fail(s.error);
+  const exam = s.exam!;
+  if (!sheets.length) return fail("저장할 답안지가 없어요");
+
+  const questions = await getQuestions(exam.id);
+  if (!questions.length) return fail("정답을 먼저 등록해 주세요");
+
+  const ids = [...new Set(sheets.map((x) => x.studentId))];
+  if (ids.length !== sheets.length) return fail("같은 학생 답안지가 두 장 있어요. 하나를 빼 주세요");
+
+  const { data: enr } = await createAdminClient()
+    .from("enrollments").select("student_id").eq("space_id", s.space.id).in("student_id", ids);
+  const enrolled = new Set((enr ?? []).map((r: { student_id: string }) => r.student_id));
+  const stranger = ids.find((id) => !enrolled.has(id));
+  if (stranger) return fail("이 공간 수강생이 아닌 답안지가 섞여 있어요");
+
+  for (const sheet of sheets) {
+    const bad =
+      sheet.marks.length !== questions.length ||
+      sheet.marks.some((m, i) => m != null && !questions[i].choices.includes(m));
+    if (bad) return fail("문항 수나 선지가 맞지 않는 답안지가 있어요. 다시 인식해 주세요");
+  }
+
+  try {
+    for (const sheet of sheets) await writeSheet(exam, questions, sheet.studentId, sheet.marks, "scan");
+  } catch (e) {
+    return fail(e instanceof Error ? e.message : "저장하지 못했어요");
+  }
+  revalidatePath(adminPath(slug, examId));
+  return done(`${sheets.length}장 저장했어요`);
+}

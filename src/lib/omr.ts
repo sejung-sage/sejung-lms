@@ -17,7 +17,7 @@ export const omrAvailable = process.env.USE_MOCK_DB !== "true";
 const db = () => createAdminClient();
 type Db = ReturnType<typeof createAdminClient>;
 
-export type OmrSource = "student" | "staff";
+export type OmrSource = "student" | "staff" | "scan";
 
 /** exam_results.omr_data 에 남기는 원본 — 누가 언제 어떤 답을 냈는가 */
 export type OmrData = {

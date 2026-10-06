@@ -130,6 +130,7 @@ export function OmrSummary({
 const SOURCE: Record<NonNullable<OmrSubmission["source"]>, string> = {
   student: "학생 제출",
   staff: "조교 입력",
+  scan: "스캔",
   import: "기존 점수",
 };
 

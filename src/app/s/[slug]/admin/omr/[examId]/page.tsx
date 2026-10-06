@@ -53,6 +53,8 @@ export default async function OmrExamPage({
       actions={
         <>
           <ButtonLink href={`/s/${slug}/admin/omr`} variant="ghost" size="sm">목록</ButtonLink>
+          <ButtonLink href={`/s/${slug}/admin/omr/${exam.id}/sheets`} variant="secondary" size="sm">답안지 인쇄</ButtonLink>
+          <ButtonLink href={`/s/${slug}/admin/omr/${exam.id}/scan`} variant="secondary" size="sm">스캔 올리기</ButtonLink>
           <OmrOpenToggle slug={slug} exam={exam} questionCount={questions.length} />
         </>
       }
