@@ -12,6 +12,7 @@
  *   학부모 90명    p001 ~ p090 (형제 10쌍 + 혼자 듣는 80명)
  *   강좌마다 8회차 수업 · 출결 · 주간 테스트 · 숙제 (지난 회차만 채점)
  *
+ * 시연용 마스터: master / demo1234
  * 모든 계정 비밀번호: demo1234 (첫 로그인 비밀번호 변경 없음)
  * 학원 관리자 계정(admin)은 지우지 않는다.
  * 전화번호는 010-0000-XXXX — 실제로 존재하지 않는 번호라 문자를 눌러도 아무에게도 가지 않는다.
@@ -100,6 +101,12 @@ async function account(loginId, name, role) {
   die(`계정 ${loginId}`, error);
   die(`프로필 ${loginId}`, (await db.from("profiles").update({ role, full_name: name, login_id: loginId }).eq("id", data.user.id)).error);
   return data.user.id;
+}
+
+/* ── 시연용 마스터 계정 master / demo1234 (관리자는 위에서 지우지 않으므로 없을 때만 만든다) ── */
+{
+  const { data: m } = await db.from("profiles").select("id").eq("login_id", "master").maybeSingle();
+  if (!m) await account("master", "학원 관리자", "admin");
 }
 
 /* ── 3. 강사 · 조교 · 강좌 ────────────────────────── */
