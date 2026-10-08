@@ -7,6 +7,8 @@ export type TeacherSpace = {
   slug: string | null;
   accent_color: string;
   icon_url: string | null;
+  /** 지점 이름 — 런처에서 지점별로 묶는다 */
+  branch?: string | null;
 };
 
 /**

@@ -1,6 +1,8 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { tempPassword } from "@/lib/accounts";
+import { selectAll } from "@/lib/db-all";
+import type { Slot } from "@/lib/hq";
 
 /**
  * 운영진(강사·조교) 계정과 공간·강좌 배정.
@@ -70,68 +72,6 @@ export async function resetStaffPassword(userId: string) {
 
 /* ── 학원 관리자: 강사 ↔ 공간 ─────────────────────── */
 
-export type TeacherRow = {
-  userId: string;
-  name: string;
-  email: string;
-  lastSignIn: string | null;
-  spaces: { id: string; name: string; subject: string | null; slug: string | null; owner: boolean; canManage: boolean }[];
-};
-
-export type SpaceRow = {
-  id: string; name: string; subject: string | null; slug: string | null; accent: string;
-  ownerName: string | null; classCount: number; studentCount: number; assistantCount: number;
-};
-
-export async function getHqOverview(): Promise<{ teachers: TeacherRow[]; spaces: SpaceRow[] }> {
-  const [spRes, profRes, staffRes, clsRes, enrRes] = await Promise.all([
-    db().from("teacher_spaces").select("id, name, subject, slug, accent_color, owner_id").eq("is_active", true).order("sort_order"),
-    db().from("profiles").select("id, full_name, login_id, role").in("role", ["teacher", "admin"]),
-    db().from("space_staff").select("space_id, profile_id, staff_role, can_manage_students"),
-    db().from("classes").select("space_id"),
-    db().from("enrollments").select("space_id").eq("status", "active"),
-  ]);
-  const spaces = spRes.data ?? [];
-  const profs = (profRes.data ?? []).filter((p) => p.role === "teacher");
-  const staff = staffRes.data ?? [];
-  const count = (rows: { space_id: string }[] | null, id: string) => (rows ?? []).filter((r) => r.space_id === id).length;
-
-  const signIns = new Map<string, string | null>();
-  for (let page = 1; ; page++) {
-    const { data } = await db().auth.admin.listUsers({ page, perPage: 200 });
-    for (const u of data?.users ?? []) signIns.set(u.id, u.last_sign_in_at ?? null);
-    if ((data?.users.length ?? 0) < 200) break;
-  }
-
-  const nameOf = new Map((profRes.data ?? []).map((p) => [p.id, p.full_name as string | null]));
-  const teachers: TeacherRow[] = profs
-    .map((p) => ({
-      userId: p.id,
-      name: p.full_name ?? "",
-      email: p.login_id ?? "",
-      lastSignIn: signIns.get(p.id) ?? null,
-      spaces: spaces
-        .filter((s) => s.owner_id === p.id || staff.some((x) => x.space_id === s.id && x.profile_id === p.id && x.staff_role === "teacher"))
-        .map((s) => ({
-          id: s.id, name: s.name, subject: s.subject, slug: s.slug,
-          owner: s.owner_id === p.id,
-          canManage: s.owner_id === p.id || !!staff.find((x) => x.space_id === s.id && x.profile_id === p.id)?.can_manage_students,
-        })),
-    }))
-    .sort((a, b) => a.name.localeCompare(b.name, "ko"));
-
-  return {
-    teachers,
-    spaces: spaces.map((s) => ({
-      id: s.id, name: s.name, subject: s.subject, slug: s.slug, accent: s.accent_color,
-      ownerName: s.owner_id ? (nameOf.get(s.owner_id) ?? null) : null,
-      classCount: count(clsRes.data, s.id),
-      studentCount: count(enrRes.data, s.id),
-      assistantCount: staff.filter((x) => x.space_id === s.id && x.staff_role === "assistant").length,
-    })),
-  };
-}
-
 /** 공간이 비어 있으면 주 강사로, 이미 주 강사가 있으면 공동 강사로 붙인다 */
 export async function grantTeacherSpace(userId: string, spaceId: string, canManage = true) {
   const { data: sp } = await db().from("teacher_spaces").select("owner_id").eq("id", spaceId).maybeSingle();
@@ -162,73 +102,48 @@ export async function setTeacherManage(userId: string, spaceId: string, canManag
   if (error) throw new Error(error.message);
 }
 
-export async function createSpace(input: { name: string; subject: string; slug: string; accent: string }) {
-  const slug = input.slug.trim().toLowerCase();
-  if (!/^[a-z0-9][a-z0-9-]{1,40}$/.test(slug)) throw new Error("주소는 영문 소문자·숫자·하이픈으로 적어 주세요 (예: lee-math)");
-  if (!input.name.trim()) throw new Error("공간 이름을 적어 주세요");
-  const { data: br } = await db().from("branches").select("id").limit(1).maybeSingle();
-  if (!br) throw new Error("지점 정보가 없어요");
-  const { data: last } = await db().from("teacher_spaces").select("sort_order").order("sort_order", { ascending: false }).limit(1).maybeSingle();
-  const { data, error } = await db().from("teacher_spaces").insert({
-    branch_id: br.id, name: input.name.trim(), subject: input.subject.trim() || null, slug,
-    accent_color: /^#[0-9a-f]{6}$/i.test(input.accent) ? input.accent : "#3182f6",
-    sort_order: (last?.sort_order ?? 0) + 1,
-  }).select("id").single();
-  if (error) throw new Error(error.code === "23505" ? "이미 쓰이는 주소예요" : error.message);
-  return data.id as string;
-}
-
 /* ── 강사: 강좌 · 조교 · 수강생 ───────────────────── */
 
-export type ClassSummary = {
-  id: string; title: string; description: string | null;
-  students: number; sessions: number; assistants: { id: string; name: string }[];
-};
-
-export async function getSpaceClasses(spaceId: string): Promise<ClassSummary[]> {
-  const [clsRes, memRes, sesRes, csRes] = await Promise.all([
-    db().from("classes").select("id, title, description, created_at").eq("space_id", spaceId).order("created_at"),
-    db().from("class_members").select("class_id").eq("space_id", spaceId),
-    db().from("sessions").select("class_id").eq("space_id", spaceId),
-    db().from("class_staff").select("class_id, profile_id, profiles(full_name)").eq("space_id", spaceId),
-  ]);
-  type CS = { class_id: string; profile_id: string; profiles: { full_name: string | null } | { full_name: string | null }[] | null };
-  const name = (p: CS["profiles"]) => (Array.isArray(p) ? p[0]?.full_name : p?.full_name) ?? "";
-  return (clsRes.data ?? []).map((c) => ({
-    id: c.id, title: c.title, description: c.description,
-    students: (memRes.data ?? []).filter((m) => m.class_id === c.id).length,
-    sessions: (sesRes.data ?? []).filter((s) => s.class_id === c.id).length,
-    assistants: ((csRes.data ?? []) as CS[]).filter((s) => s.class_id === c.id).map((s) => ({ id: s.profile_id, name: name(s.profiles) })),
-  }));
-}
-
 export type ClassDetail = {
-  id: string; title: string; description: string | null;
+  id: string; title: string; description: string | null; erp: boolean;
+  subject: string | null; subjectDetail: string | null; kind: "regular" | "special";
+  startsOn: string | null; endsOn: string | null; totalSessions: number | null; pricePerSession: number | null;
+  capacity: number | null; isClosed: boolean; slots: Slot[];
   members: string[];
   roster: { id: string; name: string; school: string | null; grade: string | null }[];
   assistants: { id: string; name: string; email: string; assigned: boolean }[];
 };
 
 export async function getClassDetail(spaceId: string, classId: string): Promise<ClassDetail | null> {
-  const { data: cls } = await db().from("classes").select("id, title, description").eq("id", classId).eq("space_id", spaceId).maybeSingle();
+  const { data: cls } = await db().from("classes")
+    .select("id, title, description, erp_class_id, subject, subject_detail, kind, starts_on, ends_on, total_sessions, price_per_session, capacity, is_closed, slots")
+    .eq("id", classId).eq("space_id", spaceId).maybeSingle();
   if (!cls) return null;
-  const [memRes, enrRes, staffRes, csRes] = await Promise.all([
-    db().from("class_members").select("student_id").eq("class_id", classId),
-    db().from("enrollments").select("students!inner(id, name, school, grade)").eq("space_id", spaceId).eq("status", "active"),
+  type S = { id: string; name: string; school: string | null; grade: string | null };
+  const [mem, enr, staffRes, csRes] = await Promise.all([
+    selectAll<{ student_id: string }>("class_members", "student_id", (q) => q.eq("class_id", classId)),
+    selectAll<{ students: S | S[] }>("enrollments", "students!inner(id, name, school, grade)", (q) => q.eq("space_id", spaceId).eq("status", "active")),
     db().from("space_staff").select("profile_id, profiles(full_name, login_id)").eq("space_id", spaceId).eq("staff_role", "assistant"),
     db().from("class_staff").select("profile_id").eq("class_id", classId),
   ]);
-  type S = { id: string; name: string; school: string | null; grade: string | null };
   type P = { full_name: string | null; login_id: string | null };
-  const roster = (enrRes.data ?? [])
-    .flatMap((r: { students: S | S[] }) => (Array.isArray(r.students) ? r.students : [r.students]))
-    .sort((a, b) => a.name.localeCompare(b.name, "ko"));
+  const members = mem.map((m) => m.student_id);
+  const memberSet = new Set(members);
+  // 이 강좌 수강생을 맨 앞에 — 큰 공간은 재원생이 수백 명이라 체크된 학생을 찾기 어렵다
+  const roster = enr
+    .flatMap((r) => (Array.isArray(r.students) ? r.students : [r.students]))
+    .sort((a, b) => Number(memberSet.has(b.id)) - Number(memberSet.has(a.id)) || a.name.localeCompare(b.name, "ko"));
   const assigned = new Set((csRes.data ?? []).map((r) => r.profile_id));
   const assistants = ((staffRes.data ?? []) as { profile_id: string; profiles: P | P[] | null }[]).map((r) => {
     const p = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles;
     return { id: r.profile_id, name: p?.full_name ?? "", email: p?.login_id ?? "", assigned: assigned.has(r.profile_id) };
   }).sort((a, b) => a.name.localeCompare(b.name, "ko"));
-  return { ...cls, members: (memRes.data ?? []).map((m) => m.student_id), roster, assistants };
+  return {
+    id: cls.id, title: cls.title, description: cls.description, erp: !!cls.erp_class_id,
+    subject: cls.subject, subjectDetail: cls.subject_detail, kind: cls.kind, startsOn: cls.starts_on, endsOn: cls.ends_on,
+    totalSessions: cls.total_sessions, pricePerSession: cls.price_per_session, capacity: cls.capacity, isClosed: cls.is_closed,
+    slots: (cls.slots ?? []) as Slot[], members, roster, assistants,
+  };
 }
 
 /** 조교를 공간 운영진으로 들이고(채점 O · 학생 관리 X) 강좌에 배정한다 */

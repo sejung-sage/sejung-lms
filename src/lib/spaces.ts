@@ -24,15 +24,18 @@ export async function getSpaces(): Promise<TeacherSpace[]> {
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("teacher_spaces")
-    .select("id, name, subject, slug, accent_color, icon_url")
+    .select("id, name, subject, slug, accent_color, icon_url, branches(name)")
     .eq("is_active", true)
-    .order("sort_order", { ascending: true });
+    .order("name", { ascending: true });
 
   if (error) {
     console.error("[spaces] teacher_spaces 조회 실패:", error.message);
     return [];
   }
-  return data ?? [];
+  return (data ?? []).map(({ branches, ...s }) => {
+    const b = branches as unknown as { name: string } | { name: string }[] | null;
+    return { ...s, branch: (Array.isArray(b) ? b[0]?.name : b?.name) ?? null };
+  });
 }
 
 export async function getSpaceBySlug(slug: string): Promise<SpaceDetail | null> {

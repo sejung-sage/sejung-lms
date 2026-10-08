@@ -4,6 +4,7 @@ import { requireStaff } from "@/lib/auth";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { AdminSection } from "@/components/admin/AdminSection";
 import type { NavKey } from "@/components/admin/AdminSidebar";
+import type { ClassParams } from "@/components/classes/ClassFilters";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,7 @@ const META: Record<string, { key: NavKey; title: string; subtitle: string }> = {
   todos: { key: "todos", title: "할 일 관리", subtitle: "재시험·제출·클리닉 예약 미완료 목록" },
   clinic: { key: "clinic", title: "클리닉 예약", subtitle: "예약·등원·하원·피드백 현황" },
   makeup: { key: "makeup", title: "보강 관리", subtitle: "결석자 보강 배정" },
-  classes: { key: "classes", title: "강좌 관리", subtitle: "강좌별 수강생 · 담당 조교" },
+  classes: { key: "classes", title: "강좌 관리", subtitle: "강좌 개설 · 강좌별 수강생 · 담당 조교" },
   students: { key: "students", title: "학생 목록", subtitle: "재원생 · 학부모 리포트 링크 · 로그인 계정" },
   approvals: { key: "approvals", title: "계정 승인", subtitle: "앱 가입·예약 승인 큐" },
   grades: { key: "grades", title: "성적", subtitle: "주간 성적·총괄시험 집계" },
@@ -23,10 +24,13 @@ const META: Record<string, { key: NavKey; title: string; subtitle: string }> = {
 
 export default async function AdminSectionPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string; section: string }>;
+  searchParams: Promise<ClassParams>;
 }) {
   const { slug, section } = await params;
+  const sp = await searchParams;
   const meta = META[section];
   if (!meta) notFound();
 
@@ -36,7 +40,7 @@ export default async function AdminSectionPage({
 
   return (
     <AdminShell space={space} slug={slug} active={meta.key} title={meta.title} subtitle={meta.subtitle}>
-      <AdminSection section={meta.key as Exclude<NavKey, "dash">} space={space} slug={slug} />
+      <AdminSection section={meta.key as Exclude<NavKey, "dash">} space={space} slug={slug} params={sp} />
     </AdminShell>
   );
 }

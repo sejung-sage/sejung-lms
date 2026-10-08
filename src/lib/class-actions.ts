@@ -7,6 +7,7 @@ import { staffForAction } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureStaffAccount, addAssistantToClass } from "@/lib/staff";
 import type { StaffActionState } from "@/lib/hq-actions";
+import { parseClassForm } from "@/lib/class-form";
 
 /**
  * 강사 — 강좌 만들기, 조교 배정, 수강생 배정.
@@ -37,23 +38,30 @@ const paths = (slug: string, classId?: string) => {
 export async function createClass(slug: string, _prev: StaffActionState, form: FormData): Promise<StaffActionState> {
   const space = await manager(slug);
   if (!space) return fail("강좌를 만들 권한이 없어요");
-  const title = str(form, "title");
-  if (!title) return fail("강좌 이름을 적어 주세요");
-  const { data, error } = await createAdminClient().from("classes")
-    .insert({ space_id: space.id, title, description: str(form, "description") || null }).select("id").single();
-  if (error) return fail(error.message);
+  let id: string;
+  try {
+    const row = parseClassForm(form);
+    const { data: sp } = await createAdminClient().from("teacher_spaces").select("branch_id").eq("id", space.id).single();
+    const { data, error } = await createAdminClient().from("classes")
+      .insert({ ...row, space_id: space.id, branch_id: sp?.branch_id ?? null }).select("id").single();
+    if (error) return fail(error.message);
+    id = data.id;
+  } catch (e) {
+    return fail(e instanceof Error ? e.message : "강좌를 만들지 못했어요");
+  }
   paths(slug);
-  redirect(`/s/${slug}/admin/classes/${data.id}`);
+  redirect(`/s/${slug}/admin/classes/${id}`);
 }
 
 export async function updateClass(slug: string, classId: string, _prev: StaffActionState, form: FormData): Promise<StaffActionState> {
   const space = await manager(slug);
   if (!space || !(await classOf(space.id, classId))) return fail("권한이 없어요");
-  const title = str(form, "title");
-  if (!title) return fail("강좌 이름을 적어 주세요");
-  const { error } = await createAdminClient().from("classes")
-    .update({ title, description: str(form, "description") || null }).eq("id", classId);
-  if (error) return fail(error.message);
+  try {
+    const { error } = await createAdminClient().from("classes").update(parseClassForm(form)).eq("id", classId);
+    if (error) return fail(error.message);
+  } catch (e) {
+    return fail(e instanceof Error ? e.message : "저장하지 못했어요");
+  }
   paths(slug, classId);
   return { ok: true, message: "저장했어요", at: Date.now() };
 }

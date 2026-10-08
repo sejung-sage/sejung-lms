@@ -1,58 +1,14 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
-import {
-  createClass, updateClass, assignAssistant, unassignAssistant, saveClassMembers,
-} from "@/lib/class-actions";
+import { assignAssistant, unassignAssistant, saveClassMembers } from "@/lib/class-actions";
 import type { StaffActionState } from "@/lib/hq-actions";
 import type { ClassDetail } from "@/lib/staff";
 import { Button } from "@/components/ui/Button";
-import { inputCls, labelCls, Message, submitWithoutReset } from "@/components/omr/fields";
+import { inputCls, Message, submitWithoutReset } from "@/components/omr/fields";
 import { CredentialNote } from "@/components/staff/Credential";
 
 const initial: StaffActionState = { ok: false, message: "" };
-
-export function CreateClassForm({ slug }: { slug: string }) {
-  const [state, action, pending] = useActionState(createClass.bind(null, slug), initial);
-  return (
-    <form action={action} className="flex flex-wrap items-end gap-2.5">
-      <div className="min-w-[200px] flex-1">
-        <label className={labelCls} htmlFor="c-title">강좌 이름</label>
-        <input id="c-title" name="title" required className={inputCls} placeholder="고2 수학 심화 C반" />
-      </div>
-      <div className="min-w-[220px] flex-[2]">
-        <label className={labelCls} htmlFor="c-desc">설명 (선택)</label>
-        <input id="c-desc" name="description" className={inputCls} placeholder="화·목 19:00 · 수학Ⅱ 미분" />
-      </div>
-      <Button type="submit" variant="primary" size="sm" className="h-10" disabled={pending}>
-        {pending ? "만드는 중…" : "강좌 만들기"}
-      </Button>
-      <div className="w-full"><Message ok={state.ok} message={state.message} /></div>
-    </form>
-  );
-}
-
-export function ClassInfoForm({ slug, cls, canManage }: { slug: string; cls: ClassDetail; canManage: boolean }) {
-  const [state, action, pending] = useActionState(updateClass.bind(null, slug, cls.id), initial);
-  return (
-    <form onSubmit={submitWithoutReset(action)} className="space-y-3">
-      <div>
-        <label className={labelCls} htmlFor="ci-title">강좌 이름</label>
-        <input id="ci-title" name="title" defaultValue={cls.title} disabled={!canManage} required className={inputCls} />
-      </div>
-      <div>
-        <label className={labelCls} htmlFor="ci-desc">설명</label>
-        <input id="ci-desc" name="description" defaultValue={cls.description ?? ""} disabled={!canManage} className={inputCls} />
-      </div>
-      {canManage && (
-        <div className="flex items-center gap-3">
-          <Button type="submit" variant="secondary" size="sm" disabled={pending}>저장</Button>
-          <Message ok={state.ok} message={state.message} />
-        </div>
-      )}
-    </form>
-  );
-}
 
 function AssignedRow({ slug, classId, a, canManage }: { slug: string; classId: string; a: ClassDetail["assistants"][number]; canManage: boolean }) {
   const [pending, start] = useTransition();

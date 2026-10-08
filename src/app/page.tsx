@@ -31,6 +31,12 @@ export default async function Home() {
   const viewer = await requireLogin();
   const [all, access] = await Promise.all([getSpaces(), launcherSpaceIds(viewer)]);
   const spaces = access.ids === "all" ? all : all.filter((s) => (access.ids as Set<string>).has(s.id));
+  // 지점별로 묶는다 — 같은 강사가 두 지점에 있으면 이름이 겹쳐서, 묶지 않으면 구분이 안 된다
+  const BRANCH_ORDER = ["대치", "반포", "방배", "송도", "동탄"];
+  const byBranch = new Map<string, typeof spaces>();
+  for (const s of spaces) byBranch.set(s.branch ?? "기타", [...(byBranch.get(s.branch ?? "기타") ?? []), s]);
+  const rank = (b: string) => { const i = BRANCH_ORDER.indexOf(b); return i < 0 ? 99 : i; };
+  const groups = [...byBranch].sort(([a], [b]) => rank(a) - rank(b));
   const hrefOf = (s: (typeof all)[number]) =>
     s.slug ? `/s/${s.slug}${APP_PATH[access.target.get(s.id) ?? "admin"]}` : "#";
 
@@ -93,9 +99,20 @@ export default async function Home() {
               : "담당 공간이 없어요. 학원 관리자에게 공간 배정을 요청해 주세요."}
           </div>
         ) : (
-          <div className="grid grid-cols-4 gap-x-3 gap-y-7 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3">
-            {spaces.map((space) => (
-              <TeacherIcon key={space.id} space={space} href={hrefOf(space)} />
+          <div className="space-y-8">
+            {groups.map(([branch, list]) => (
+              <section key={branch}>
+                {groups.length > 1 && (
+                  <h3 className="mb-3 flex items-baseline gap-2 text-[15px] font-bold text-grey-800">
+                    {branch} <span className="num text-[13px] font-medium text-grey-400">{list.length}</span>
+                  </h3>
+                )}
+                <div className="grid grid-cols-4 gap-x-3 gap-y-7 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3">
+                  {list.map((space) => (
+                    <TeacherIcon key={space.id} space={space} href={hrefOf(space)} />
+                  ))}
+                </div>
+              </section>
             ))}
           </div>
         )}

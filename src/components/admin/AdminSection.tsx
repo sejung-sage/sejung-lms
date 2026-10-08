@@ -13,9 +13,10 @@ import { getViewer, staffGrant } from "@/lib/auth";
 import { getAccountRoster } from "@/lib/accounts";
 import { AccountsPanel } from "@/components/accounts/AccountsPanel";
 import { OmrExamList } from "@/components/omr/OmrAdmin";
-import { getSpaceClasses } from "@/lib/staff";
+import { getClassRows, CLASS_PAGE } from "@/lib/hq";
 import { getReportTargets } from "@/lib/report-links";
-import { CreateClassForm } from "@/components/classes/ClassForms";
+import { ClassTable } from "@/components/classes/ClassTable";
+import { ClassFilters, Pager, type ClassParams } from "@/components/classes/ClassFilters";
 import { ReportLinkPanel } from "@/components/report/ReportLinkPanel";
 
 /* ── 토스식 테이블 프리미티브 ──────────────────────
@@ -81,61 +82,39 @@ function EmptyCard({ children }: { children: React.ReactNode }) {
 }
 
 export async function AdminSection({
-  section, space, slug,
+  section, space, slug, params,
 }: {
   section: Exclude<NavKey, "dash">;
   space: SpaceDetail;
   slug: string;
+  /** 목록 화면의 검색 조건 (강좌 탭) */
+  params?: ClassParams;
 }) {
   const accent = space.accent_color;
 
-  /* ── 강좌 관리 ── */
+  /* ── 강좌 관리 — ERP 강좌 목록과 같은 열 ── */
   if (section === "classes") {
     if (!omrAvailable) return <ComingSoon title="강좌 관리" />;
-    const [classes, viewer] = await Promise.all([getSpaceClasses(space.id), getViewer()]);
+    const p = params ?? {};
+    const page = Number(p.page) || 1;
+    const [{ rows, total }, viewer] = await Promise.all([
+      getClassRows({ spaceId: space.id, subject: p.subject, kind: p.kind, q: p.q, closed: p.closed === "1", page }),
+      getViewer(),
+    ]);
     const canManage = !!viewer && !!staffGrant(viewer, space.id)?.canManage;
+    const base = `/s/${slug}/admin/classes`;
     return (
       <>
         {canManage && (
-          <Card>
-            <CreateClassForm slug={slug} />
-          </Card>
-        )}
-        {classes.length === 0 ? (
-          <EmptyCard>아직 강좌가 없어요</EmptyCard>
-        ) : (
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {classes.map((c) => (
-              <div key={c.id} className={`${cardBase} flex flex-col p-5`}>
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <div className="truncate text-[16px] font-bold text-grey-900">{c.title}</div>
-                    <div className="mt-0.5 truncate text-[13px] text-grey-500">{c.description ?? "설명 없음"}</div>
-                  </div>
-                  <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: accent }} />
-                </div>
-                <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-                  {[
-                    { l: "수강생", v: `${c.students}명` },
-                    { l: "회차", v: `${c.sessions}회` },
-                    { l: "조교", v: `${c.assistants.length}명` },
-                  ].map((x) => (
-                    <div key={x.l} className="rounded-md bg-panel py-2">
-                      <div className="text-[11.5px] text-grey-500">{x.l}</div>
-                      <div className="num text-[15px] font-bold text-grey-900">{x.v}</div>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-3 min-h-[22px] text-[12.5px] text-grey-600">
-                  {c.assistants.length ? `담당 조교 · ${c.assistants.map((a) => a.name).join(", ")}` : <span className="text-amber-500">담당 조교 미배정</span>}
-                </div>
-                <ButtonLink href={`/s/${slug}/admin/classes/${c.id}`} variant="secondary" size="sm" className="mt-3">
-                  {canManage ? "관리하기" : "보기"}
-                </ButtonLink>
-              </div>
-            ))}
+          <div className="flex justify-end">
+            <ButtonLink href={`${base}/new`} variant="primary" size="sm">강좌 개설</ButtonLink>
           </div>
         )}
+        <div className={cardBase}>
+          <ClassFilters params={p} base={base} />
+          <ClassTable rows={rows} hrefOf={(r) => `${base}/${r.id}`} />
+          <Pager total={total} page={page} size={CLASS_PAGE} base={base} params={p} />
+        </div>
       </>
     );
   }
