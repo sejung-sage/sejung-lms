@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { confirmClinicArrival, submitClinicDeparture } from "./actions";
 import { ViewBeacon } from "./ViewBeacon";
+import { getParentHome } from "@/lib/parent";
+import { ParentHome } from "@/components/parent/ParentHome";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +12,8 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 type Action = "clinic_arrived" | "clinic_departed" | "report" | "todo" | "qna" | "survey" | "temp_login";
+
+type SpaceRow = { id: string; name: string; subject: string | null; slug: string | null; accent_color: string };
 
 type MagicLink = {
   id: string;
@@ -20,8 +24,8 @@ type MagicLink = {
   expires_at: string;
   consumed_at: string | null;
   view_count: number;
-  teacher_spaces: { name: string; accent_color: string } | { name: string; accent_color: string }[] | null;
-  students: { name: string } | { name: string }[] | null;
+  teacher_spaces: SpaceRow | SpaceRow[] | null;
+  students: { id: string; name: string } | { id: string; name: string }[] | null;
 };
 
 const one = <T,>(v: T | T[] | null): T | null => (Array.isArray(v) ? (v[0] ?? null) : v);
@@ -124,7 +128,7 @@ export default async function MagicLinkPage({
   const { data } = await db
     .from("magic_links")
     .select(
-      "id, token, action, target_id, payload, expires_at, consumed_at, view_count, teacher_spaces(name, accent_color), students(name)",
+      "id, token, action, target_id, payload, expires_at, consumed_at, view_count, teacher_spaces(id, name, subject, slug, accent_color), students(id, name)",
     )
     .eq("token", token)
     .maybeSingle();
@@ -136,6 +140,19 @@ export default async function MagicLinkPage({
   const view = resolveView(link);
   const space = one(link.teacher_spaces);
   const student = one(link.students);
+
+  // 학부모 리포트 — 링크가 살아 있으면 그 학생의 리포트를 바로 보여준다 (읽기 전용, 로그인 없음)
+  if (link.action === "report" && view.status === "read" && space && student) {
+    const data = await getParentHome(space, student);
+    if (data) {
+      return (
+        <>
+          <ViewBeacon token={token} />
+          <ParentHome space={space} slug={space.slug ?? ""} data={data} linkExpires={link.expires_at.slice(0, 10)} />
+        </>
+      );
+    }
+  }
 
   return (
     <main className="min-h-screen bg-panel px-5 py-10 text-grey-900">

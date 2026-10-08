@@ -16,6 +16,7 @@ const MOBILE_NAV: { key: NavKey; label: string; path: string }[] = [
   { key: "attendance", label: "출석", path: "/admin/attendance" },
   { key: "homework", label: "숙제", path: "/admin/homework" },
   { key: "makeup", label: "보강", path: "/admin/makeup" },
+  { key: "classes", label: "강좌", path: "/admin/classes" },
   { key: "students", label: "학생", path: "/admin/students" },
   { key: "approvals", label: "승인", path: "/admin/approvals" },
   { key: "grades", label: "성적", path: "/admin/grades" },

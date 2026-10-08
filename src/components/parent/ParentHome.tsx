@@ -6,7 +6,12 @@ import { Card, Badge } from "@/components/ui/Card";
 import { ChipTabs } from "@/components/ui/Tabs";
 import { ButtonLink } from "@/components/ui/Button";
 
-export function ParentHome({ space, slug, data, preview }: { space: SpaceDetail; slug: string; data: ParentHomeData; preview?: boolean }) {
+/**
+ * linkExpires 가 있으면 '알림톡·문자 링크로 연 리포트' — 로그인 없이 열리므로 계정·알림 버튼과 자녀 전환을 뺀다.
+ */
+export function ParentHome({
+  space, slug, data, preview, linkExpires,
+}: { space: SpaceDetail; slug: string; data: ParentHomeData; preview?: boolean; linkExpires?: string }) {
   const accent = space.accent_color;
   const initial = space.name.replace(/쌤$/, "").charAt(0) || space.name.charAt(0);
 
@@ -27,6 +32,9 @@ export function ParentHome({ space, slug, data, preview }: { space: SpaceDetail;
             <div className="text-[12px] text-grey-500">{space.subject} · 학부모</div>
           </div>
         </div>
+        {linkExpires ? (
+          <Badge tone="blue">학습 리포트</Badge>
+        ) : (
         <div className="flex items-center gap-1.5">
           <ButtonLink href={preview ? `/s/${slug}` : "/account"} variant="secondary" size="xs">
             {preview ? "관리자 뷰" : "내 계정"}
@@ -42,6 +50,7 @@ export function ParentHome({ space, slug, data, preview }: { space: SpaceDetail;
             </svg>
           </Link>
         </div>
+        )}
       </header>
       {preview && (
         <div className="bg-amber-50 px-5 py-2 text-[12.5px] font-medium text-amber-500">
@@ -50,11 +59,13 @@ export function ParentHome({ space, slug, data, preview }: { space: SpaceDetail;
       )}
 
       <main className="flex-1 space-y-3 px-5 pt-1">
-        {/* 자녀 스위처 */}
-        <ChipTabs
-          active={data.child}
-          items={data.children.map((c) => ({ key: c, label: c }))}
-        />
+        {/* 자녀 스위처 — 링크 리포트는 한 학생 전용 */}
+        {!linkExpires && (
+          <ChipTabs
+            active={data.child}
+            items={data.children.map((c) => ({ key: c, label: c }))}
+          />
+        )}
 
         {/* 이번 주 요약 */}
         <h3 className="px-1 pb-1 pt-3 text-[17px] font-bold text-grey-900">
@@ -118,6 +129,11 @@ export function ParentHome({ space, slug, data, preview }: { space: SpaceDetail;
             ))}
           </ul>
         </Card>
+        {linkExpires && (
+          <p className="px-1 pt-4 text-center text-[12px] leading-[1.6] text-grey-400">
+            이 링크는 {linkExpires}까지 열 수 있어요. 문의는 담당 선생님께 해 주세요.
+          </p>
+        )}
       </main>
       </div>
     </div>

@@ -18,7 +18,10 @@ export function LineChart({
   const innerH = H - padTop - padBottom;
   const n = points.length;
   const x = (i: number) => padX + (n <= 1 ? innerW / 2 : (innerW * i) / (n - 1));
-  const y = (v: number) => padTop + innerH * (1 - (v - min) / (max - min));
+  // 기본 축(60~100)보다 낮은 점수가 있으면 축을 10 단위로 내린다 — 선이 그래프 밖으로 나가지 않게
+  const lo = Math.min(min, Math.floor(Math.min(...points, min) / 10) * 10);
+  const hi = Math.max(max, Math.ceil(Math.max(...points, max) / 10) * 10);
+  const y = (v: number) => padTop + innerH * (1 - (v - lo) / (hi - lo || 1));
   const gid = `grad-${color.replace(/[^a-z0-9]/gi, "")}`;
 
   const line = points.map((p, i) => `${x(i)},${y(p)}`).join(" ");

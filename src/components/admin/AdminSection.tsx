@@ -1,6 +1,6 @@
 import { Card, Badge, cardBase, ComingSoon } from "./ui";
 import { ProgressBar } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
+import { Button, ButtonLink } from "@/components/ui/Button";
 import { PillTabs } from "@/components/ui/Tabs";
 import type { NavKey } from "./AdminSidebar";
 import type { SpaceDetail } from "@/lib/spaces";
@@ -13,6 +13,10 @@ import { getViewer, staffGrant } from "@/lib/auth";
 import { getAccountRoster } from "@/lib/accounts";
 import { AccountsPanel } from "@/components/accounts/AccountsPanel";
 import { OmrExamList } from "@/components/omr/OmrAdmin";
+import { getSpaceClasses } from "@/lib/staff";
+import { getReportTargets } from "@/lib/report-links";
+import { CreateClassForm } from "@/components/classes/ClassForms";
+import { ReportLinkPanel } from "@/components/report/ReportLinkPanel";
 
 /* ── 토스식 테이블 프리미티브 ──────────────────────
    헤더는 대문자 트래킹 대신 얌전한 회색 소문자.
@@ -84,13 +88,67 @@ export async function AdminSection({
   slug: string;
 }) {
   const accent = space.accent_color;
+
+  /* ── 강좌 관리 ── */
+  if (section === "classes") {
+    if (!omrAvailable) return <ComingSoon title="강좌 관리" />;
+    const [classes, viewer] = await Promise.all([getSpaceClasses(space.id), getViewer()]);
+    const canManage = !!viewer && !!staffGrant(viewer, space.id)?.canManage;
+    return (
+      <>
+        {canManage && (
+          <Card>
+            <CreateClassForm slug={slug} />
+          </Card>
+        )}
+        {classes.length === 0 ? (
+          <EmptyCard>아직 강좌가 없어요</EmptyCard>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {classes.map((c) => (
+              <div key={c.id} className={`${cardBase} flex flex-col p-5`}>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="truncate text-[16px] font-bold text-grey-900">{c.title}</div>
+                    <div className="mt-0.5 truncate text-[13px] text-grey-500">{c.description ?? "설명 없음"}</div>
+                  </div>
+                  <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: accent }} />
+                </div>
+                <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+                  {[
+                    { l: "수강생", v: `${c.students}명` },
+                    { l: "회차", v: `${c.sessions}회` },
+                    { l: "조교", v: `${c.assistants.length}명` },
+                  ].map((x) => (
+                    <div key={x.l} className="rounded-md bg-panel py-2">
+                      <div className="text-[11.5px] text-grey-500">{x.l}</div>
+                      <div className="num text-[15px] font-bold text-grey-900">{x.v}</div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-3 min-h-[22px] text-[12.5px] text-grey-600">
+                  {c.assistants.length ? `담당 조교 · ${c.assistants.map((a) => a.name).join(", ")}` : <span className="text-amber-500">담당 조교 미배정</span>}
+                </div>
+                <ButtonLink href={`/s/${slug}/admin/classes/${c.id}`} variant="secondary" size="sm" className="mt-3">
+                  {canManage ? "관리하기" : "보기"}
+                </ButtonLink>
+              </div>
+            ))}
+          </div>
+        )}
+      </>
+    );
+  }
+
   /* ── 학생 목록 ── */
   if (section === "students") {
     const rows = await getAdminStudents(space);
     if (!rows.length) return <EmptyCard>등록된 수강생이 없어요</EmptyCard>;
     const viewer = await getViewer();
     const canManage = !!viewer && !!staffGrant(viewer, space.id)?.canManage;
-    const accounts = omrAvailable ? await getAccountRoster(space.id) : [];
+    const [accounts, reports] = omrAvailable
+      ? await Promise.all([getAccountRoster(space.id), getReportTargets(space.id)])
+      : [[], []];
     return (
       <>
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -134,6 +192,8 @@ export async function AdminSection({
             </tbody>
           </table>
         </TableCard>
+
+        {reports.length > 0 && <ReportLinkPanel slug={slug} rows={reports} />}
 
         {accounts.length > 0 && <AccountsPanel slug={slug} rows={accounts} canManage={canManage} />}
       </>

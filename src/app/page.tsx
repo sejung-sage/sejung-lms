@@ -42,6 +42,14 @@ export default async function Home() {
             세정학원
           </h1>
           <div className="flex items-center gap-1.5">
+            {viewer.isAdmin && (
+              <Link
+                href="/hq"
+                className="pressable mr-1 inline-flex h-9 items-center rounded-full bg-grey-900 px-3.5 text-[13px] font-semibold text-white hover:bg-grey-800"
+              >
+                학원 관리
+              </Link>
+            )}
             <IconButton label="알림">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M18 8a6 6 0 1 0-12 0c0 6-2 7-2 7h16s-2-1-2-7" />
@@ -70,7 +78,9 @@ export default async function Home() {
       <main className={`${CONTAINER} flex-1 pb-16 pt-6 sm:pt-8`}>
         <div className="mb-5 flex items-baseline gap-2">
           <h2 className="text-[17px] font-bold text-grey-900 sm:text-[20px]">
-            {viewer.name ? `${viewer.name}님의 선생님` : "선생님"}
+            {viewer.role === "student" || viewer.role === "parent"
+              ? viewer.name ? `${viewer.name}님의 선생님` : "선생님"
+              : viewer.isAdmin ? "전체 강사 공간" : `${viewer.name}님의 담당 공간`}
           </h2>
           <CountPill>{spaces.length}</CountPill>
           <span className="ml-auto text-[13px] text-grey-500">눌러서 들어가기</span>
