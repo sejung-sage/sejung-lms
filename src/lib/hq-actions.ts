@@ -181,3 +181,43 @@ export async function hqCreateClass(_prev: StaffActionState, form: FormData): Pr
   revalidatePath("/hq/classes");
   redirect(`/s/${sp.slug}/admin/classes/${classId}`);
 }
+
+/* ── 계정 관리 ─────────────────────────────────── */
+
+const ID_RE = /^[a-z0-9][a-z0-9._-]{2,29}$/;
+
+/** 로그인 아이디 바꾸기 — 학원 발급 아이디(s001 등) 또는 이메일 */
+export async function changeLoginId(profileId: string, _prev: StaffActionState, form: FormData): Promise<StaffActionState> {
+  if (!(await isHq())) return fail("학원 관리자만 할 수 있어요");
+  const raw = str(form, "loginId").toLowerCase();
+  const isEmail = raw.includes("@");
+  if (isEmail ? !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(raw) : !ID_RE.test(raw)) {
+    return fail("아이디는 영문 소문자·숫자 3~30자(또는 이메일)로 적어 주세요");
+  }
+  const { data: taken } = await db().from("profiles").select("id").eq("login_id", raw).neq("id", profileId).maybeSingle();
+  if (taken) return fail("이미 쓰이는 아이디예요");
+  const { error } = await db().auth.admin.updateUserById(profileId, {
+    email: isEmail ? raw : `${raw}@id.sejung-lms.local`, email_confirm: true,
+  });
+  if (error) return fail(`바꾸지 못했어요: ${error.message}`);
+  await db().from("profiles").update({ login_id: raw }).eq("id", profileId);
+  revalidatePath("/hq/accounts");
+  return okState(`아이디를 ${raw}(으)로 바꿨어요`);
+}
+
+/** 학생·학부모 계정 발급 (아직 없는 사람) */
+export async function issueFamilyAccount(kind: "student" | "parent", entityId: string, _prev: StaffActionState): Promise<StaffActionState> {
+  void _prev;
+  if (!(await isHq())) return fail("학원 관리자만 할 수 있어요");
+  const { issueAccount } = await import("@/lib/accounts");
+  const { data: row } = await db().from(kind === "student" ? "students" : "parents").select("id, name, phone, profile_id").eq("id", entityId).maybeSingle();
+  if (!row) return fail("없는 사람이에요");
+  if (row.profile_id) return fail("이미 계정이 있어요");
+  try {
+    const cred = await issueAccount({ kind, id: row.id, name: row.name, of: null, phone: row.phone, profileId: null, loginId: null });
+    revalidatePath("/hq/accounts");
+    return okState(`${row.name} 계정을 만들었어요`, { credential: { name: cred.name, email: cred.loginId, password: cred.password } });
+  } catch (e) {
+    return fail(e instanceof Error ? e.message : "발급하지 못했어요");
+  }
+}

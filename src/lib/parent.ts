@@ -54,12 +54,17 @@ export async function getParentHome(
         n: scores.length,
       };
     })
-    .filter((e) => e.score != null);
+    .filter((e) => e.score != null)
+    // 공간 전체 시험 순번이 아니라 자녀가 본 시험 기준으로 센다
+    .map((e, i) => ({ ...e, round: i + 1 }));
 
   // 마감 전 과제는 분모에서 뺀다 (학생앱과 같은 기준)
   type AsgRow = { id: string; due_date: string | null; submissions: { student_id: string; status: string }[] };
   const todayStr = new Date().toISOString().slice(0, 10);
-  const asgs = ((asgRes.data ?? []) as AsgRow[]).filter((a) => (a.due_date ?? "") <= todayStr);
+  // 자녀가 듣는 강좌의 숙제만 — 제출 행은 그 강좌 수강생에게만 생긴다
+  const asgs = ((asgRes.data ?? []) as AsgRow[])
+    .filter((a) => (a.submissions ?? []).some((s) => s.student_id === child.id))
+    .filter((a) => (a.due_date ?? "") <= todayStr);
   const mineSubs = asgs.map((a) => (a.submissions ?? []).find((s) => s.student_id === child.id)?.status);
   const doneN = mineSubs.filter((s) => s === "submitted" || s === "late").length;
 

@@ -18,7 +18,7 @@ export default async function HqTeachersPage() {
     <HqShell
       active="teachers"
       title="강사"
-      subtitle={`ERP 강사 ${teachers.length}명 · LMS 계정 발급 ${withAccount}명 — 강사를 눌러 LMS 계정을 발급하고 권한을 줘요`}
+      subtitle={`강사 ${teachers.length}명 · LMS 계정 발급 ${withAccount}명 — 강사를 눌러 계정·권한·강좌를 관리해요`}
       actions={<ButtonLink href="/hq/teachers/new" variant="primary" size="sm">강사 등록</ButtonLink>}
     >
       <TeacherList teachers={teachers} branches={branches} defaultBranch={branches[0]?.id ?? ""} />

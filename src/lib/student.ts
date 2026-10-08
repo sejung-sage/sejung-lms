@@ -53,7 +53,14 @@ async function examHistory(db: Db, spaceId: string, studentId: string) {
         all: scores,
       };
     })
-    .filter((e) => e.score != null);
+    .filter((e) => e.score != null)
+    // 한 강사가 강좌를 여러 개 열면 공간 전체 시험 순번이 건너뛴다 — 내가 본 시험 기준으로 다시 센다
+    .map((e, i) => ({ ...e, round: i + 1 }));
+}
+
+/** 내 숙제만 — 숙제는 그 강좌 수강생에게만 제출 행이 생긴다. 다른 반 숙제를 미제출로 세지 않는다 */
+function mineOnly<T extends { submissions: { student_id: string }[] | null }>(rows: T[], studentId: string): T[] {
+  return rows.filter((a) => (a.submissions ?? []).some((s) => s.student_id === studentId));
 }
 
 export async function getStudentHome(space: SpaceDetail, viewer: Viewer): Promise<StudentHome | null> {
@@ -96,7 +103,8 @@ export async function getStudentHome(space: SpaceDetail, viewer: Viewer): Promis
     id: string; title: string; description: string | null; due_date: string | null;
     submissions: { student_id: string; status: string }[];
   };
-  const asgs = ((asgRes.data ?? []) as AsgRow[]).slice(0, 3);
+  const myAsg = mineOnly((asgRes.data ?? []) as AsgRow[], viewer.id);
+  const asgs = myAsg.slice(0, 3);
   const homework = asgs.map((a) => {
     const mine = (a.submissions ?? []).find((s) => s.student_id === viewer.id);
     const done = mine?.status === "submitted" || mine?.status === "late";
@@ -126,7 +134,7 @@ export async function getStudentHome(space: SpaceDetail, viewer: Viewer): Promis
      분모는 '마감이 지난 과제'만. 아직 마감 전인 과제를 미제출로 세면
      성실한 학생도 D등급으로 떨어진다. */
   const today = new Date().toISOString().slice(0, 10);
-  const dueAsg = ((asgRes.data ?? []) as AsgRow[]).filter((a) => (a.due_date ?? "") <= today);
+  const dueAsg = myAsg.filter((a) => (a.due_date ?? "") <= today);
   const mineAll = dueAsg.map((a) => (a.submissions ?? []).find((s) => s.student_id === viewer.id));
   const doneN = mineAll.filter((s) => s?.status === "submitted" || s?.status === "late").length;
   const rate = dueAsg.length ? Math.round((doneN / dueAsg.length) * 100) : 100;
@@ -188,7 +196,7 @@ export async function getStudentGrade(space: SpaceDetail, viewer: Viewer): Promi
 
   type AsgRow = { id: string; title: string; due_date: string | null; submissions: { student_id: string; status: string }[] };
   const today = new Date().toISOString().slice(0, 10);
-  const asgs = ((asgRes.data ?? []) as AsgRow[]).filter((a) => (a.due_date ?? "") <= today);
+  const asgs = mineOnly((asgRes.data ?? []) as AsgRow[], viewer.id).filter((a) => (a.due_date ?? "") <= today);
   const mine = asgs.map((a) => ({
     title: a.title,
     s: (a.submissions ?? []).find((s) => s.student_id === viewer.id)?.status,

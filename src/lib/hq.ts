@@ -184,3 +184,89 @@ export async function getTeacherOptions(): Promise<{ id: string; name: string; b
     .map((s) => ({ id: s.id, name: s.name, branch: bn.get(s.branch_id) ?? "", subjects: s.subjects?.length ? s.subjects : s.subject ? [s.subject] : [] }))
     .sort((a, b) => a.name.localeCompare(b.name, "ko"));
 }
+
+/* ── 계정 관리 — 강사 · 조교 · 학생 · 학부모 로그인 아이디 ── */
+
+export type AccountKind = "teacher" | "assistant" | "student" | "parent";
+export type HqAccount = {
+  kind: AccountKind;
+  /** 로그인 계정(profiles.id) — 학생·학부모는 아직 없을 수 있다 */
+  profileId: string | null;
+  /** students.id / parents.id (학생·학부모만) */
+  entityId: string | null;
+  name: string;
+  loginId: string | null;
+  /** 소속 — 강사: 공간 / 조교: 공간·담당 강좌 / 학생: 학교·수강 강좌 / 학부모: 자녀 */
+  detail: string;
+  phone: string | null;
+  lastSignIn: string | null;
+};
+
+export async function getHqAccounts(): Promise<HqAccount[]> {
+  type Prof = { id: string; role: string; full_name: string | null; login_id: string | null };
+  const [profiles, spaces, staff, classStaff, classes, students, members, parents, links] = await Promise.all([
+    selectAll<Prof>("profiles", "id, role, full_name, login_id", (q) => q.in("role", ["teacher", "assistant"])),
+    selectAll<{ id: string; name: string; owner_id: string | null }>("teacher_spaces", "id, name, owner_id"),
+    selectAll<{ space_id: string; profile_id: string; staff_role: string }>("space_staff", "space_id, profile_id, staff_role"),
+    selectAll<{ class_id: string; profile_id: string }>("class_staff", "class_id, profile_id"),
+    selectAll<{ id: string; title: string }>("classes", "id, title"),
+    selectAll<{ id: string; name: string; school: string | null; grade: string | null; phone: string | null; profile_id: string | null }>(
+      "students", "id, name, school, grade, phone, profile_id"),
+    selectAll<{ class_id: string; student_id: string }>("class_members", "class_id, student_id"),
+    selectAll<{ id: string; name: string; phone: string | null; profile_id: string | null }>("parents", "id, name, phone, profile_id"),
+    selectAll<{ parent_id: string; student_id: string }>("parent_links", "parent_id, student_id"),
+  ]);
+  const loginOf = new Map<string, string | null>();
+  const studentProfiles = [...students, ...parents].map((x) => x.profile_id).filter((x): x is string => !!x);
+  for (let i = 0; i < studentProfiles.length; i += 200) {
+    const { data } = await db().from("profiles").select("id, login_id").in("id", studentProfiles.slice(i, i + 200));
+    for (const p of data ?? []) loginOf.set(p.id, p.login_id);
+  }
+  const signIn = new Map<string, string | null>();
+  for (let page = 1; ; page++) {
+    const { data } = await db().auth.admin.listUsers({ page, perPage: 1000 });
+    for (const u of data?.users ?? []) signIn.set(u.id, u.last_sign_in_at ?? null);
+    if ((data?.users.length ?? 0) < 1000) break;
+  }
+  const spaceName = new Map(spaces.map((s) => [s.id, s.name]));
+  const classTitle = new Map(classes.map((c) => [c.id, c.title]));
+  const studentName = new Map(students.map((s) => [s.id, s.name]));
+  const byName = (a: HqAccount, b: HqAccount) => (a.loginId ?? "~").localeCompare(b.loginId ?? "~") || a.name.localeCompare(b.name, "ko");
+
+  const staffRows: HqAccount[] = profiles.map((p) => {
+    const mySpaces = [
+      ...spaces.filter((s) => s.owner_id === p.id).map((s) => s.name),
+      ...staff.filter((x) => x.profile_id === p.id).map((x) => spaceName.get(x.space_id) ?? ""),
+    ].filter(Boolean);
+    const myClasses = classStaff.filter((x) => x.profile_id === p.id).map((x) => classTitle.get(x.class_id)).filter(Boolean);
+    return {
+      kind: p.role as AccountKind, profileId: p.id, entityId: null, name: p.full_name ?? "", loginId: p.login_id, phone: null,
+      detail: p.role === "assistant"
+        ? `${mySpaces.join(", ") || "공간 없음"}${myClasses.length ? ` · 담당 ${myClasses.join(", ")}` : " · 담당 강좌 없음"}`
+        : mySpaces.join(", ") || "담당 공간 없음",
+      lastSignIn: signIn.get(p.id) ?? null,
+    };
+  });
+
+  const studentRows: HqAccount[] = students.map((s) => {
+    const cls = members.filter((m) => m.student_id === s.id).map((m) => classTitle.get(m.class_id)).filter(Boolean);
+    return {
+      kind: "student", profileId: s.profile_id, entityId: s.id, name: s.name, phone: s.phone,
+      loginId: s.profile_id ? (loginOf.get(s.profile_id) ?? null) : null,
+      detail: `${[s.school, s.grade].filter(Boolean).join(" ")} · 수강 ${cls.length}개${cls.length ? ` (${cls.slice(0, 2).join(", ")}${cls.length > 2 ? " 외" : ""})` : ""}`,
+      lastSignIn: s.profile_id ? (signIn.get(s.profile_id) ?? null) : null,
+    };
+  });
+
+  const parentRows: HqAccount[] = parents.map((p) => {
+    const kids = links.filter((l) => l.parent_id === p.id).map((l) => studentName.get(l.student_id)).filter(Boolean);
+    return {
+      kind: "parent", profileId: p.profile_id, entityId: p.id, name: p.name, phone: p.phone,
+      loginId: p.profile_id ? (loginOf.get(p.profile_id) ?? null) : null,
+      detail: kids.length ? `자녀 ${kids.join(", ")}${kids.length > 1 ? " (형제)" : ""}` : "연결된 자녀 없음",
+      lastSignIn: p.profile_id ? (signIn.get(p.profile_id) ?? null) : null,
+    };
+  });
+
+  return [...staffRows, ...studentRows, ...parentRows].sort(byName);
+}

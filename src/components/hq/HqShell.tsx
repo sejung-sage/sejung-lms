@@ -6,13 +6,13 @@ import { ButtonLink } from "@/components/ui/Button";
 export function HqShell({
   active, title, subtitle, actions, children,
 }: {
-  active: "teachers" | "classes";
+  active: "teachers" | "classes" | "accounts";
   title: string;
   subtitle?: string;
   actions?: React.ReactNode;
   children: React.ReactNode;
 }) {
-  const tab = (key: "teachers" | "classes", label: string, href: string) => (
+  const tab = (key: "teachers" | "classes" | "accounts", label: string, href: string) => (
     <Link
       href={href}
       aria-current={active === key ? "page" : undefined}
@@ -44,6 +44,7 @@ export function HqShell({
         <nav className="mx-auto mt-2 flex w-full max-w-[1600px] gap-5 px-5">
           {tab("teachers", "강사", "/hq")}
           {tab("classes", "강좌", "/hq/classes")}
+          {tab("accounts", "계정", "/hq/accounts")}
         </nav>
       </header>
       <main className="mx-auto w-full max-w-[1600px] space-y-4 px-5 py-5">
