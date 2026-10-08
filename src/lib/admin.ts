@@ -73,10 +73,12 @@ export async function getAdminStudents(space: SpaceDetail): Promise<Student[]> {
   const asgs = ((asgRes.data ?? []) as AsgRow[]).filter((a) => (a.due_date ?? "") <= todayStr);
   const hw = new Map<string, number>();
   for (const p of people) {
-    const done = asgs.filter((a) =>
+    // 그 학생 강좌의 숙제만 — 제출 행은 수강생에게만 생긴다 (한 강사의 다른 반 숙제를 미제출로 세지 않는다)
+    const mine = asgs.filter((a) => (a.submissions ?? []).some((s) => s.student_id === p.id));
+    const done = mine.filter((a) =>
       (a.submissions ?? []).some((s) => s.student_id === p.id && (s.status === "submitted" || s.status === "late")),
     ).length;
-    hw.set(p.id, asgs.length ? Math.round((done / asgs.length) * 100) : 100);
+    hw.set(p.id, mine.length ? Math.round((done / mine.length) * 100) : 100);
   }
 
   return people.map((p) => {
