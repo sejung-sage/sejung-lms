@@ -9,16 +9,18 @@ import { Card, Badge } from "@/components/ui/Card";
 export const dynamic = "force-dynamic";
 
 export default async function StudentOmrListPage({
-  params,
+  params, searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ class?: string }>;
 }) {
   const { slug } = await params;
+  const { class: classId } = await searchParams;
   const space = await getSpaceBySlug(slug);
   if (!space) notFound();
 
   const ctx = await studentContext(space, slug);
-  const data = omrAvailable ? await getStudentOmrList(space, ctx.student) : null;
+  const data = omrAvailable ? await getStudentOmrList(space, ctx.student, classId) : null;
 
   return (
     <StudentFrame space={space} slug={slug} active="grade" pageLabel="OMR 답안 제출" preview={ctx.preview}>

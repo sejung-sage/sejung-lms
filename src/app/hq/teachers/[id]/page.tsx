@@ -53,7 +53,7 @@ export default async function HqTeacherPage({ params }: { params: Promise<{ id: 
           <span className="text-[15px] font-bold">진행 중인 강좌</span>
           <span className="num text-[13px] text-grey-500">{classes.total}</span>
         </div>
-        <ClassTable rows={classes.rows} hrefOf={(r) => `/s/${r.spaceSlug}/admin/classes/${r.id}`} />
+        <ClassTable rows={classes.rows} hrefOf={(r) => `/s/${r.spaceSlug}/c/${r.id}`} />
       </Card>
     </HqShell>
   );

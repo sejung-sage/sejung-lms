@@ -43,13 +43,18 @@ const ICON = {
   list: "M8 6h13|M8 12h13|M8 18h13|M3 6h.01|M3 12h.01|M3 18h.01",
   calendar: "M8 2v4|M16 2v4|M3 10h18|M5 4h14a2 2 0 0 1 2 2v14H3V6a2 2 0 0 1 2-2",
   layers: "M12 3 2 8l10 5 10-5z|M2 13l10 5 10-5",
+  back: "M15 18l-6-6 6-6",
+  gear: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6|M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1",
   omr: "M5 3h14v18H5z|M9 8h.01|M12 8h3|M9 12h.01|M12 12h3|M9 16h.01|M12 16h3",
 };
 
 export type NavKey =
   | "dash" | "attendance" | "homework" | "makeup"
   | "students" | "approvals" | "grades" | "videos"
-  | "todos" | "clinic" | "omr" | "classes";
+  | "todos" | "clinic" | "omr" | "classes" | "settings";
+
+/** 강좌 화면에서 쓰는 메뉴 — 강사 앱 안에서 강좌를 한 번 더 들어간 상태 */
+export type CourseNav = { id: string; title: string };
 
 type Item = {
   key: NavKey;
@@ -60,29 +65,45 @@ type Item = {
   badge?: number;
 };
 
-function nav(slug: string): Item[][] {
+/** 강사 앱 첫 화면 — 강좌를 고르는 곳. 조교에게는 강좌만 보인다 */
+function spaceNav(slug: string, assistant: boolean): Item[][] {
   const a = `/s/${slug}/admin`;
-  // 배열 하나 = 레일 위 한 덩어리. 덩어리 사이에만 얇은 구분선이 들어간다.
+  if (assistant) return [[{ key: "dash", label: "강좌", icon: "layers", href: `/s/${slug}` }]];
   return [
-    [{ key: "dash", label: "대시보드", icon: "dash", href: `/s/${slug}` }],
+    [{ key: "dash", label: "강좌", icon: "layers", href: `/s/${slug}` }],
     [
-      { key: "attendance", label: "출석", icon: "check", href: `${a}/attendance` },
-      { key: "homework", label: "숙제", icon: "book", href: `${a}/homework` },
-      { key: "todos", label: "할 일", icon: "list", href: `${a}/todos` },
-      { key: "clinic", label: "클리닉", icon: "calendar", href: `${a}/clinic` },
-      { key: "makeup", label: "보강", icon: "refresh", href: `${a}/makeup` },
-    ],
-    [
-      { key: "classes", label: "강좌", icon: "layers", href: `${a}/classes` },
       { key: "students", label: "학생", icon: "users", href: `${a}/students` },
       { key: "approvals", label: "승인", icon: "badge", href: `${a}/approvals` },
     ],
+    [{ key: "videos", label: "영상", icon: "video", href: `${a}/videos` }],
+  ];
+}
+
+/** 강좌 안 — 이 강좌의 수업 운영 */
+export function courseNav(slug: string, courseId: string): Item[][] {
+  const c = `/s/${slug}/c/${courseId}`;
+  // 배열 하나 = 레일 위 한 덩어리. 덩어리 사이에만 얇은 구분선이 들어간다.
+  return [
+    [{ key: "dash", label: "수업 홈", icon: "dash", href: c }],
     [
-      { key: "grades", label: "성적", icon: "chart", href: `${a}/grades` },
-      { key: "omr", label: "OMR", icon: "omr", href: `${a}/omr` },
-      { key: "videos", label: "영상", icon: "video", href: `${a}/videos` },
+      { key: "attendance", label: "출석", icon: "check", href: `${c}/attendance` },
+      { key: "homework", label: "숙제", icon: "book", href: `${c}/homework` },
+      { key: "todos", label: "할 일", icon: "list", href: `${c}/todos` },
+      { key: "clinic", label: "클리닉", icon: "calendar", href: `${c}/clinic` },
+    ],
+    [
+      { key: "grades", label: "성적", icon: "chart", href: `${c}/grades` },
+      { key: "omr", label: "OMR", icon: "omr", href: `${c}/omr` },
+    ],
+    [
+      { key: "students", label: "수강생", icon: "users", href: `${c}/students` },
+      { key: "settings", label: "강좌 설정", icon: "gear", href: `${c}/settings` },
     ],
   ];
+}
+
+export function navItems(slug: string, course: CourseNav | undefined, assistant: boolean) {
+  return course ? courseNav(slug, course.id) : spaceNav(slug, assistant);
 }
 
 function RailItem({ item, on }: { item: Item; on: boolean }) {
@@ -110,13 +131,15 @@ function RailItem({ item, on }: { item: Item; on: boolean }) {
 }
 
 export function AdminSidebar({
-  slug, spaceName, accent, initial, active, version = "v0.1",
+  slug, spaceName, accent, initial, active, course, assistant = false, version = "v0.1",
 }: {
   slug: string;
   spaceName: string;
   accent: string;
   initial: string;
   active: NavKey;
+  course?: CourseNav;
+  assistant?: boolean;
   version?: string;
 }) {
   return (
@@ -131,7 +154,17 @@ export function AdminSidebar({
       </Link>
 
       <nav className="flex-1 overflow-y-auto px-2 pb-3 pt-2">
-        {nav(slug).map((group, gi) => (
+        {course && (
+          <Link
+            href={`/s/${slug}`}
+            title="강좌 목록으로"
+            className="pressable mb-1.5 flex flex-col items-center gap-1 rounded-md py-2 text-grey-500 transition-colors hover:bg-grey-100 hover:text-grey-900"
+          >
+            <Ic d={ICON.back} size={18} />
+            <span className="text-[11px] font-semibold tracking-[-0.02em]">강좌 목록</span>
+          </Link>
+        )}
+        {navItems(slug, course, assistant).map((group, gi) => (
           <div
             key={gi}
             className={gi > 0 ? "mt-1.5 border-t border-grey-100 pt-1.5" : ""}

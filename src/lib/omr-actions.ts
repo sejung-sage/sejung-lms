@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSpaceBySlug, type SpaceDetail } from "@/lib/spaces";
-import { staffForAction, studentForAction } from "@/lib/auth";
+import { staffForAction, studentForAction, canSeeClass } from "@/lib/auth";
 import {
   omrAvailable, getExamInSpace, getQuestions, writeSheet, regradeExam, DEFAULT_CHOICES,
   type OmrExamMeta,
@@ -37,18 +37,25 @@ async function scope(slug: string, examId: string | undefined, need: Need): Prom
   if (!space?.id) return { ok: false, error: "공간을 찾을 수 없어요" };
 
   let student: { id: string; name: string } | null = null;
+  let staff: Awaited<ReturnType<typeof staffForAction>> = null;
   if (need === "student") {
     student = await studentForAction(space.id);
     if (!student) return { ok: false, error: "학생 계정으로 로그인해야 제출할 수 있어요" };
   } else {
-    const st = await staffForAction(space.id);
-    if (!st) return { ok: false, error: "이 공간 운영진만 할 수 있어요" };
-    if (need === "grade" && !st.grant.canGrade) return { ok: false, error: "채점 권한이 없어요" };
+    staff = await staffForAction(space.id);
+    if (!staff) return { ok: false, error: "이 공간 운영진만 할 수 있어요" };
+    if (need === "grade" && !staff.grant.canGrade) return { ok: false, error: "채점 권한이 없어요" };
   }
 
   if (!examId) return { ok: true, space, exam: null, student };
   const exam = await getExamInSpace(space.id, examId);
   if (!exam) return { ok: false, error: "이 공간의 시험이 아니에요" };
+  // 강좌 시험 — 조교는 배정받은 강좌만, 학생은 그 강좌 수강생만
+  if (staff && !(await canSeeClass(staff.viewer, space.id, exam.classId))) return { ok: false, error: "담당 강좌의 시험이 아니에요" };
+  if (student && exam.classId) {
+    const { data: m } = await createAdminClient().from("class_members").select("id").eq("class_id", exam.classId).eq("student_id", student.id).maybeSingle();
+    if (!m) return { ok: false, error: "내가 듣는 강좌의 시험이 아니에요" };
+  }
   return { ok: true, space, exam, student };
 }
 
@@ -57,9 +64,12 @@ const adminPath = (slug: string, examId?: string) =>
 
 /* ── 시험 만들기 ─────────────────────────────── */
 
-export async function createExam(slug: string, _prev: ActionState, fd: FormData): Promise<ActionState> {
+export async function createExam(slug: string, classId: string, _prev: ActionState, fd: FormData): Promise<ActionState> {
   const s = await scope(slug, undefined, "staff");
   if (!s.ok) return fail(s.error);
+  const st = await staffForAction(s.space.id);
+  const { data: cls } = await createAdminClient().from("classes").select("id").eq("id", classId).eq("space_id", s.space.id).maybeSingle();
+  if (!cls || !st || !(await canSeeClass(st.viewer, s.space.id, classId))) return fail("담당 강좌에서만 시험을 만들 수 있어요");
 
   const title = String(fd.get("title") ?? "").trim();
   const examDate = String(fd.get("exam_date") ?? "").trim() || null;
@@ -72,7 +82,7 @@ export async function createExam(slug: string, _prev: ActionState, fd: FormData)
 
   const { data, error } = await createAdminClient()
     .from("exams")
-    .insert({ space_id: s.space.id, title, exam_date: examDate, exam_type: examType, cutoff_score: cutoff })
+    .insert({ space_id: s.space.id, class_id: classId, title, exam_date: examDate, exam_type: examType, cutoff_score: cutoff })
     .select("id")
     .single();
   if (error || !data) return fail(`시험을 만들지 못했어요: ${error?.message ?? "알 수 없는 오류"}`);

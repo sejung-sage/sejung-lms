@@ -32,11 +32,11 @@ const hhmm = (iso: string | null) =>
 
 type EnrolledStudent = { id: string; name: string; school: string | null; grade: string | null; phone: string | null; status: string };
 
-async function roster(spaceId: string): Promise<EnrolledStudent[]> {
-  const { data } = await db()
-    .from("enrollments")
-    .select("students!inner(id, name, school, grade, phone, status)")
-    .eq("space_id", spaceId);
+/** 공간 재원생, classId 를 주면 그 강좌 수강생만 */
+async function roster(spaceId: string, classId?: string): Promise<EnrolledStudent[]> {
+  const { data } = classId
+    ? await db().from("class_members").select("students!inner(id, name, school, grade, phone, status)").eq("class_id", classId)
+    : await db().from("enrollments").select("students!inner(id, name, school, grade, phone, status)").eq("space_id", spaceId);
   const rows = (data ?? []).flatMap((r: { students: EnrolledStudent | EnrolledStudent[] }) =>
     Array.isArray(r.students) ? r.students : [r.students],
   );
@@ -45,15 +45,26 @@ async function roster(spaceId: string): Promise<EnrolledStudent[]> {
 
 /* ── 학생 목록 ─────────────────────────────────── */
 
-export async function getAdminStudents(space: SpaceDetail): Promise<Student[]> {
+export async function getAdminStudents(space: SpaceDetail, classId?: string): Promise<Student[]> {
   if (useMock) return mockStudents(space.subject ?? "정규");
   if (!space.id) return [];
 
-  const [people, attRes, asgRes] = await Promise.all([
-    roster(space.id),
-    db().from("attendance").select("student_id, status, sessions!inner(classes(title))").eq("space_id", space.id),
-    db().from("assignments").select("id, due_date, submissions(student_id, status)").eq("space_id", space.id),
+  let attQ = db().from("attendance").select("student_id, status, sessions!inner(class_id, classes(title))").eq("space_id", space.id);
+  if (classId) attQ = attQ.eq("sessions.class_id", classId);
+  let asgQ = db().from("assignments").select("id, due_date, submissions(student_id, status)").eq("space_id", space.id);
+  if (classId) asgQ = asgQ.eq("class_id", classId);
+  const [people, attRes, asgRes, memRes] = await Promise.all([
+    roster(space.id, classId),
+    attQ,
+    asgQ,
+    db().from("class_members").select("student_id, classes(title)").eq("space_id", space.id),
   ]);
+  // 반 열 — 학생이 이 강사에게서 듣는 강좌 전부
+  const classNames = new Map<string, string[]>();
+  for (const m of (memRes.data ?? []) as { student_id: string; classes: { title: string } | { title: string }[] | null }[]) {
+    const t = one(m.classes)?.title;
+    if (t) classNames.set(m.student_id, [...(classNames.get(m.student_id) ?? []), t]);
+  }
 
   type AttRow = { student_id: string; status: string; sessions: { classes: { title: string } | { title: string }[] | null } | { classes: { title: string } | { title: string }[] | null }[] };
   const att = new Map<string, { n: number; ok: number; cls: string }>();
@@ -88,7 +99,7 @@ export async function getAdminStudents(space: SpaceDetail): Promise<Student[]> {
       school: p.school ?? "—",
       grade: p.grade ?? "—",
       phone: p.phone ?? "—",
-      className: a?.cls ?? "—",
+      className: classNames.get(p.id)?.join(", ") ?? a?.cls ?? "—",
       attendanceRate: a && a.n ? Math.round((a.ok / a.n) * 100) : 0,
       hwRate: hw.get(p.id) ?? 0,
       status: p.status === "active" ? "재원" : "휴원",
@@ -98,14 +109,16 @@ export async function getAdminStudents(space: SpaceDetail): Promise<Student[]> {
 
 /* ── 출석 관리 : 가장 최근 출결이 찍힌 차시 ────── */
 
-export async function getAdminAttendance(space: SpaceDetail): Promise<{ session: string; rows: AttendanceRow[] }> {
+export async function getAdminAttendance(space: SpaceDetail, classId?: string): Promise<{ session: string; rows: AttendanceRow[] }> {
   if (useMock) return mockAttendance(space.subject ?? "정규");
   if (!space.id) return { session: "차시 없음", rows: [] };
 
-  const { data } = await db()
+  let q = db()
     .from("attendance")
-    .select("status, marked_at, students!inner(name), sessions!inner(id, session_no, scheduled_at, classes(title))")
+    .select("status, marked_at, students!inner(name), sessions!inner(id, class_id, session_no, scheduled_at, classes(title))")
     .eq("space_id", space.id);
+  if (classId) q = q.eq("sessions.class_id", classId);
+  const { data } = await q;
 
   type Row = {
     status: string; marked_at: string | null;
@@ -139,16 +152,16 @@ export async function getAdminAttendance(space: SpaceDetail): Promise<{ session:
 
 /* ── 숙제 관리 : 가장 최근 과제 ───────────────── */
 
-export async function getAdminHomework(space: SpaceDetail): Promise<{ title: string; due: string; rows: HwRow[] }> {
+export async function getAdminHomework(space: SpaceDetail, classId?: string): Promise<{ title: string; due: string; rows: HwRow[] }> {
   if (useMock) return mockHomework(space.subject ?? "정규");
   if (!space.id) return { title: "과제 없음", due: "—", rows: [] };
 
-  const { data } = await db()
+  let q = db()
     .from("assignments")
     .select("title, due_date, submissions(status, submitted_at, students!inner(name))")
-    .eq("space_id", space.id)
-    .order("due_date", { ascending: false })
-    .limit(1);
+    .eq("space_id", space.id);
+  if (classId) q = q.eq("class_id", classId);
+  const { data } = await q.order("due_date", { ascending: false }).limit(1);
 
   type Row = {
     title: string; due_date: string | null;
@@ -176,14 +189,16 @@ export async function getAdminHomework(space: SpaceDetail): Promise<{ title: str
 
 /* ── 성적 : 최근 시험 3개를 열로 ──────────────── */
 
-export async function getAdminGrades(space: SpaceDetail): Promise<{ columns: string[]; rows: GradeRow[] }> {
+export async function getAdminGrades(space: SpaceDetail, classId?: string): Promise<{ columns: string[]; rows: GradeRow[] }> {
   if (useMock) return mockGrades(space.subject ?? "정규");
   if (!space.id) return { columns: [], rows: [] };
 
+  // 강좌 화면에서는 그 강좌 수강생 × 그 강좌 시험만 — 다른 반 시험을 안 본 학생이 0점으로 찍히지 않게
+  let examQ = db().from("exams").select("id, title, max_score, exam_date, exam_results(student_id, score)").eq("space_id", space.id);
+  if (classId) examQ = examQ.eq("class_id", classId);
   const [people, examRes] = await Promise.all([
-    roster(space.id),
-    db().from("exams").select("id, title, max_score, exam_date, exam_results(student_id, score)")
-      .eq("space_id", space.id).order("exam_date", { ascending: false }).limit(6),
+    roster(space.id, classId),
+    examQ.order("exam_date", { ascending: false }).limit(6),
   ]);
 
   type ExamRow = { id: string; title: string; max_score: number | null; exam_results: { student_id: string; score: number | null }[] };
@@ -231,14 +246,16 @@ const TODO_STATE: Record<string, TodoRow["state"]> = {
   waived: "면제",
 };
 
-export async function getAdminTodos(space: SpaceDetail): Promise<TodoRow[]> {
+export async function getAdminTodos(space: SpaceDetail, classId?: string): Promise<TodoRow[]> {
   if (useMock) return mockTodos(space.subject ?? "정규");
   if (!space.id) return [];
 
-  const { data } = await db()
+  let q = db()
     .from("todos")
     .select("kind, title, due_at, state, students!inner(name)")
-    .eq("space_id", space.id)
+    .eq("space_id", space.id);
+  if (classId) q = q.eq("class_id", classId);
+  const { data } = await q
     .order("state", { ascending: true })
     .order("due_at", { ascending: true })
     .limit(80);
@@ -266,14 +283,16 @@ const CLINIC_STATUS: Record<string, ClinicRow["status"]> = {
   canceled: "취소",
 };
 
-export async function getAdminClinicReservations(space: SpaceDetail): Promise<ClinicRow[]> {
+export async function getAdminClinicReservations(space: SpaceDetail, classId?: string): Promise<ClinicRow[]> {
   if (useMock) return mockClinicReservations(space.subject ?? "정규");
   if (!space.id) return [];
 
-  const { data } = await db()
+  let q = db()
     .from("clinic_reservations")
-    .select("status, feedback, students!inner(name), clinic_sessions!inner(title, starts_at)")
-    .eq("space_id", space.id)
+    .select("status, feedback, students!inner(name), clinic_sessions!inner(title, starts_at, class_id)")
+    .eq("space_id", space.id);
+  if (classId) q = q.eq("clinic_sessions.class_id", classId);
+  const { data } = await q
     .order("created_at", { ascending: false })
     .limit(80);
 

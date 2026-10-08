@@ -30,7 +30,7 @@ export default async function HqClassesPage({ searchParams }: { searchParams: Pr
     >
       <div className="rounded-card border border-grey-200 bg-white">
         <ClassFilters params={params} branches={branches} base="/hq/classes" />
-        <ClassTable rows={rows} showTeacher hrefOf={(r) => `/s/${r.spaceSlug}/admin/classes/${r.id}`} />
+        <ClassTable rows={rows} showTeacher hrefOf={(r) => `/s/${r.spaceSlug}/c/${r.id}`} />
         <Pager total={total} page={page} size={CLASS_PAGE} base="/hq/classes" params={params} />
       </div>
     </HqShell>

@@ -1,6 +1,6 @@
 import { Card, Badge, cardBase, ComingSoon } from "./ui";
 import { ProgressBar } from "@/components/ui/Card";
-import { Button, ButtonLink } from "@/components/ui/Button";
+import { Button } from "@/components/ui/Button";
 import { PillTabs } from "@/components/ui/Tabs";
 import type { NavKey } from "./AdminSidebar";
 import type { SpaceDetail } from "@/lib/spaces";
@@ -13,10 +13,7 @@ import { getViewer, staffGrant } from "@/lib/auth";
 import { getAccountRoster } from "@/lib/accounts";
 import { AccountsPanel } from "@/components/accounts/AccountsPanel";
 import { OmrExamList } from "@/components/omr/OmrAdmin";
-import { getClassRows, CLASS_PAGE } from "@/lib/hq";
 import { getReportTargets } from "@/lib/report-links";
-import { ClassTable } from "@/components/classes/ClassTable";
-import { ClassFilters, Pager, type ClassParams } from "@/components/classes/ClassFilters";
 import { ReportLinkPanel } from "@/components/report/ReportLinkPanel";
 
 /* ── 토스식 테이블 프리미티브 ──────────────────────
@@ -82,50 +79,24 @@ function EmptyCard({ children }: { children: React.ReactNode }) {
 }
 
 export async function AdminSection({
-  section, space, slug, params,
+  section, space, slug, classId,
 }: {
   section: Exclude<NavKey, "dash">;
   space: SpaceDetail;
   slug: string;
-  /** 목록 화면의 검색 조건 (강좌 탭) */
-  params?: ClassParams;
+  /** 강좌 안이면 그 강좌 — 데이터가 그 강좌로 좁혀진다 */
+  classId?: string;
 }) {
   const accent = space.accent_color;
 
-  /* ── 강좌 관리 — ERP 강좌 목록과 같은 열 ── */
-  if (section === "classes") {
-    if (!omrAvailable) return <ComingSoon title="강좌 관리" />;
-    const p = params ?? {};
-    const page = Number(p.page) || 1;
-    const [{ rows, total }, viewer] = await Promise.all([
-      getClassRows({ spaceId: space.id, subject: p.subject, kind: p.kind, q: p.q, closed: p.closed === "1", page }),
-      getViewer(),
-    ]);
-    const canManage = !!viewer && !!staffGrant(viewer, space.id)?.canManage;
-    const base = `/s/${slug}/admin/classes`;
-    return (
-      <>
-        {canManage && (
-          <div className="flex justify-end">
-            <ButtonLink href={`${base}/new`} variant="primary" size="sm">강좌 개설</ButtonLink>
-          </div>
-        )}
-        <div className={cardBase}>
-          <ClassFilters params={p} base={base} />
-          <ClassTable rows={rows} hrefOf={(r) => `${base}/${r.id}`} />
-          <Pager total={total} page={page} size={CLASS_PAGE} base={base} params={p} />
-        </div>
-      </>
-    );
-  }
-
   /* ── 학생 목록 ── */
   if (section === "students") {
-    const rows = await getAdminStudents(space);
+    const rows = await getAdminStudents(space, classId);
     if (!rows.length) return <EmptyCard>등록된 수강생이 없어요</EmptyCard>;
     const viewer = await getViewer();
     const canManage = !!viewer && !!staffGrant(viewer, space.id)?.canManage;
-    const [accounts, reports] = omrAvailable
+    // 계정·리포트 링크는 강사 공간 '학생' 화면에서만 (강좌 화면은 그 반 명단만)
+    const [accounts, reports] = omrAvailable && !classId
       ? await Promise.all([getAccountRoster(space.id), getReportTargets(space.id)])
       : [[], []];
     return (
@@ -181,7 +152,7 @@ export async function AdminSection({
 
   /* ── 출석 관리 ── */
   if (section === "attendance") {
-    const { session, rows } = await getAdminAttendance(space);
+    const { session, rows } = await getAdminAttendance(space, classId);
     if (!rows.length) return <EmptyCard>출결 기록이 있는 차시가 없어요</EmptyCard>;
     const count = (st: string) => rows.filter((r) => r.status === st).length;
     return (
@@ -213,7 +184,7 @@ export async function AdminSection({
 
   /* ── 숙제 관리 ── */
   if (section === "homework") {
-    const { title, due, rows } = await getAdminHomework(space);
+    const { title, due, rows } = await getAdminHomework(space, classId);
     if (!rows.length) return <EmptyCard>등록된 과제가 없어요</EmptyCard>;
     const submitted = rows.filter((r) => r.status !== "미제출").length;
     const rate = Math.round((submitted / rows.length) * 100);
@@ -253,7 +224,7 @@ export async function AdminSection({
 
   /* ── 할 일 관리 ── */
   if (section === "todos") {
-    const rows = await getAdminTodos(space);
+    const rows = await getAdminTodos(space, classId);
     if (!rows.length) return <EmptyCard>미완료 할 일이 없어요</EmptyCard>;
     const open = rows.filter((r) => r.state === "미완료");
     const retakes = open.filter((r) => r.kind === "재시험").length;
@@ -291,7 +262,7 @@ export async function AdminSection({
 
   /* ── 클리닉 예약 ── */
   if (section === "clinic") {
-    const rows = await getAdminClinicReservations(space);
+    const rows = await getAdminClinicReservations(space, classId);
     if (!rows.length) return <EmptyCard>클리닉 예약이 없어요</EmptyCard>;
     const count = (st: string) => rows.filter((r) => r.status === st).length;
     return (
@@ -327,7 +298,7 @@ export async function AdminSection({
 
   /* ── 성적 ── */
   if (section === "grades") {
-    const { columns, rows } = await getAdminGrades(space);
+    const { columns, rows } = await getAdminGrades(space, classId);
     if (!columns.length) return <EmptyCard>채점된 시험이 없어요</EmptyCard>;
     return (
       <TableCard title="최근 시험 성적" sub="· 100점 환산">
@@ -356,9 +327,10 @@ export async function AdminSection({
   /* ── OMR 채점 ── */
   if (section === "omr") {
     if (!omrAvailable) return <EmptyCard>OMR 은 실 DB 에서만 동작해요 (USE_MOCK_DB=false)</EmptyCard>;
-    const rows = await getOmrExamList(space);
+    if (!classId) return <EmptyCard>OMR 은 강좌 안에서 만들어요</EmptyCard>;
+    const rows = await getOmrExamList(space, classId);
     const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
-    return <OmrExamList slug={slug} rows={rows} today={today} />;
+    return <OmrExamList slug={slug} classId={classId} rows={rows} today={today} />;
   }
 
   /* ── 계정 승인 ── */

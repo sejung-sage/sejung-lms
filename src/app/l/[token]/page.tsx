@@ -5,6 +5,8 @@ import { confirmClinicArrival, submitClinicDeparture } from "./actions";
 import { ViewBeacon } from "./ViewBeacon";
 import { getParentHome } from "@/lib/parent";
 import { ParentHome } from "@/components/parent/ParentHome";
+import { getChildCourses, getChildCourse, getChildren } from "@/lib/family";
+import { ParentFamily } from "@/components/parent/ParentFamily";
 
 export const dynamic = "force-dynamic";
 
@@ -118,11 +120,13 @@ const CTA =
   "mt-3 h-11 w-full rounded-btn bg-blue-500 text-[15px] font-bold text-white transition-colors hover:bg-blue-600 active:bg-blue-700";
 
 export default async function MagicLinkPage({
-  params,
+  params, searchParams,
 }: {
   params: Promise<{ token: string }>;
+  searchParams: Promise<{ class?: string }>;
 }) {
   const { token } = await params;
+  const { class: classId } = await searchParams;
 
   const db = createAdminClient();
   const { data } = await db
@@ -141,17 +145,30 @@ export default async function MagicLinkPage({
   const space = one(link.teacher_spaces);
   const student = one(link.students);
 
-  // 학부모 리포트 — 링크가 살아 있으면 그 학생의 리포트를 바로 보여준다 (읽기 전용, 로그인 없음)
-  if (link.action === "report" && view.status === "read" && space && student) {
-    const data = await getParentHome(space, student);
-    if (data) {
-      return (
-        <>
-          <ViewBeacon token={token} />
-          <ParentHome space={space} slug={space.slug ?? ""} data={data} linkExpires={link.expires_at.slice(0, 10)} />
-        </>
-      );
+  // 학부모 리포트 — 자녀 한 명 단위. 자녀가 듣는 모든 강좌가 강좌별로 나오고, 눌러서 강좌 리포트로 들어간다.
+  // (링크가 열어주는 범위는 이 학생 하나뿐 — ?class 는 이 학생이 듣는 강좌일 때만 열린다)
+  if (link.action === "report" && view.status === "read" && student) {
+    const expires = link.expires_at.slice(0, 10);
+    if (classId) {
+      const course = await getChildCourse(student.id, classId);
+      const data = course ? await getParentHome(course.space, student, [student], classId) : null;
+      if (course && data) {
+        return (
+          <>
+            <ParentHome space={course.space} slug={course.space.slug ?? ""} data={data} course={course.title}
+              backHref={`/l/${token}`} linkExpires={expires} />
+          </>
+        );
+      }
     }
+    const [kid] = await getChildren([student.id]);
+    const courses = await getChildCourses(student.id);
+    return (
+      <>
+        <ViewBeacon token={token} />
+        <ParentFamily kids={[kid]} child={kid} courses={courses} courseHref={(id) => `/l/${token}?class=${id}`} linkExpires={expires} />
+      </>
+    );
   }
 
   return (

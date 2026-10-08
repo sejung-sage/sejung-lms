@@ -20,12 +20,12 @@ const td = "h-11 px-3 text-[13.5px]";
 
 /* ── 목록 ───────────────────────────────────── */
 
-export function OmrExamList({ slug, rows, today }: { slug: string; rows: OmrExamListRow[]; today: string }) {
+export function OmrExamList({ slug, classId, rows, today }: { slug: string; classId: string; rows: OmrExamListRow[]; today: string }) {
   return (
     <>
       <Card>
         <div className="mb-3 text-[15px] font-bold text-grey-900">새 시험</div>
-        <CreateExamForm slug={slug} today={today} />
+        <CreateExamForm slug={slug} classId={classId} today={today} />
       </Card>
 
       <div className={`${cardBase} overflow-hidden`}>

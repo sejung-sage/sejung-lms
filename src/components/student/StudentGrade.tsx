@@ -3,24 +3,27 @@ import type { StudentGrade as StudentGradeData } from "@/lib/student";
 import { StudentFrame } from "./StudentFrame";
 import { LineChart, Donut } from "./charts";
 import { Card, Badge } from "@/components/ui/Card";
-import { SegmentedTabs } from "@/components/ui/Tabs";
+import { ChipTabs } from "@/components/ui/Tabs";
 import { OmrEntry } from "@/components/omr/OmrEntry";
 
-export function StudentGrade({ space, slug, data, preview }: { space: SpaceDetail; slug: string; data: StudentGradeData; preview?: boolean }) {
+export function StudentGrade({
+  space, slug, data, preview, courses, active,
+}: {
+  space: SpaceDetail; slug: string; data: StudentGradeData; preview?: boolean;
+  /** 내가 듣는 강좌 — 강좌별로 성적을 나눠 본다 (섞으면 추이가 거짓말을 한다) */
+  courses: { id: string; title: string }[]; active: string | null;
+}) {
   return (
     <StudentFrame space={space} slug={slug} active="grade" pageLabel="성적" preview={preview}>
-      {/* 기간 필터 — 토스 세그먼트 탭 */}
-      <SegmentedTabs
-        className="mt-1"
-        active="week"
-        items={[
-          { key: "week", label: "주간" },
-          { key: "month", label: "월간" },
-          { key: "all", label: "전체" },
-        ]}
-      />
+      {courses.length > 0 && (
+        <ChipTabs
+          className="mt-1"
+          active={active ?? ""}
+          items={courses.map((c) => ({ key: c.id, label: c.title, href: `/s/${slug}/student/grade?class=${c.id}` }))}
+        />
+      )}
 
-      <OmrEntry slug={slug} />
+      <OmrEntry slug={slug} classId={active ?? undefined} />
 
       {/* 주간보고서 */}
       <h3 className="px-1 pb-1 pt-3 text-[17px] font-bold text-grey-900">주간보고서</h3>

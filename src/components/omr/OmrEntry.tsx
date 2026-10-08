@@ -1,10 +1,10 @@
 import Link from "next/link";
 
 /** 학생 앱 홈·성적 탭에서 OMR 제출로 들어가는 줄 */
-export function OmrEntry({ slug }: { slug: string }) {
+export function OmrEntry({ slug, classId }: { slug: string; classId?: string }) {
   return (
     <Link
-      href={`/s/${slug}/student/omr`}
+      href={`/s/${slug}/student/omr${classId ? `?class=${classId}` : ""}`}
       className="flex items-center justify-between rounded-card border border-grey-200 bg-white px-4 py-3.5 transition-colors hover:bg-grey-50"
     >
       <div>

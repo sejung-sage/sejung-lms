@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { getSpaces } from "@/lib/spaces";
 import { requireLogin, launcherSpaceIds } from "@/lib/auth";
 import { signOut } from "@/app/login/actions";
@@ -29,6 +30,8 @@ const APP_PATH = { admin: "", student: "/student", parent: "/parent" } as const;
 
 export default async function Home() {
   const viewer = await requireLogin();
+  // 학부모는 강사가 아니라 자녀 중심으로 본다
+  if (viewer.role === "parent" && viewer.childIds.length) redirect("/parent");
   const [all, access] = await Promise.all([getSpaces(), launcherSpaceIds(viewer)]);
   const spaces = access.ids === "all" ? all : all.filter((s) => (access.ids as Set<string>).has(s.id));
   // 지점별로 묶는다 — 같은 강사가 두 지점에 있으면 이름이 겹쳐서, 묶지 않으면 구분이 안 된다

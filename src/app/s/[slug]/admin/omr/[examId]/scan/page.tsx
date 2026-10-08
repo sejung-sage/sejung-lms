@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { getSpaceBySlug } from "@/lib/spaces";
-import { requireStaff } from "@/lib/auth";
+import { requireStaff, requireExamScope } from "@/lib/auth";
 import { getOmrExamDetail } from "@/lib/omr";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { ButtonLink } from "@/components/ui/Button";
@@ -20,10 +20,13 @@ export default async function OmrScanPage({
   await requireStaff(space, slug);
   const detail = await getOmrExamDetail(space, examId);
   if (!detail) notFound();
+  const { course, grant } = await requireExamScope(space, slug, detail.exam.classId);
   const { exam, questions, submissions } = detail;
 
   return (
     <AdminShell
+      course={course ?? undefined}
+      assistant={grant.assistant}
       space={space}
       slug={slug}
       active="omr"

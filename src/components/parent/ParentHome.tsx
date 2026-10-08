@@ -10,8 +10,14 @@ import { ButtonLink } from "@/components/ui/Button";
  * linkExpires 가 있으면 '알림톡·문자 링크로 연 리포트' — 로그인 없이 열리므로 계정·알림 버튼과 자녀 전환을 뺀다.
  */
 export function ParentHome({
-  space, slug, data, preview, linkExpires,
-}: { space: SpaceDetail; slug: string; data: ParentHomeData; preview?: boolean; linkExpires?: string }) {
+  space, slug, data, preview, linkExpires, course, backHref,
+}: {
+  space: SpaceDetail; slug: string; data: ParentHomeData; preview?: boolean; linkExpires?: string;
+  /** 강좌 리포트면 그 강좌 이름 — 자녀 전환 대신 강좌 이름이 머리에 온다 */
+  course?: string;
+  /** 자녀의 강좌 목록으로 돌아가기 */
+  backHref?: string;
+}) {
   const accent = space.accent_color;
   const initial = space.name.replace(/쌤$/, "").charAt(0) || space.name.charAt(0);
 
@@ -20,16 +26,21 @@ export function ParentHome({
       <div className="flex min-h-dvh w-full min-w-0 max-w-md flex-col border-grey-200 bg-white pb-10 sm:border-x">
       {/* 상단바 */}
       <header className="sticky top-0 z-10 flex items-center justify-between border-b border-grey-100 bg-white/95 px-5 pb-3 pt-5 backdrop-blur-sm">
-        <div className="flex items-center gap-2.5">
+        <div className="flex min-w-0 items-center gap-2.5">
+          {backHref && (
+            <Link href={backHref} aria-label="강좌 목록으로" className="-ml-1.5 flex size-8 shrink-0 items-center justify-center rounded-full text-grey-600 hover:bg-grey-100">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+            </Link>
+          )}
           <div
-            className="flex size-9 items-center justify-center rounded-[12px] text-[14px] font-bold text-white"
+            className="flex size-9 shrink-0 items-center justify-center rounded-[12px] text-[14px] font-bold text-white"
             style={{ backgroundColor: accent }}
           >
             {initial}
           </div>
-          <div className="leading-tight">
-            <div className="text-[17px] font-bold text-grey-900">{space.name}</div>
-            <div className="text-[12px] text-grey-500">{space.subject} · 학부모</div>
+          <div className="min-w-0 leading-tight">
+            <div className="truncate text-[17px] font-bold text-grey-900">{course ?? space.name}</div>
+            <div className="truncate text-[12px] text-grey-500">{course ? `${space.name} · ${space.subject ?? ""}` : `${space.subject} · 학부모`}</div>
           </div>
         </div>
         {linkExpires ? (
@@ -60,7 +71,7 @@ export function ParentHome({
 
       <main className="flex-1 space-y-3 px-5 pt-1">
         {/* 자녀 스위처 — 링크 리포트는 한 학생 전용 */}
-        {!linkExpires && (
+        {!linkExpires && !course && (
           <ChipTabs
             active={data.child}
             items={data.children.map((c) => ({ key: c, label: c }))}

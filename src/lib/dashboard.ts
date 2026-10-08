@@ -39,27 +39,30 @@ const CLINIC_LABEL: Record<string, "신청" | "승인" | "완료"> = {
   done: "완료",
 };
 
-export async function getDashboard(space: SpaceDetail): Promise<Dashboard> {
+/** classId 를 주면 그 강좌만 — 강좌 화면의 '수업 홈' */
+export async function getDashboard(space: SpaceDetail, classId?: string): Promise<Dashboard> {
   if (useMock) return mockDashboard(space);
   if (!space.id) return EMPTY;
 
   const db = createAdminClient();
   const now = new Date();
 
+  let sessQ = db.from("sessions").select("session_no, title, scheduled_at, classes(title)").eq("space_id", space.id);
+  if (classId) sessQ = sessQ.eq("class_id", classId);
+  let missQ = db.from("submissions")
+    .select("status, assignments!inner(title, due_date, space_id, class_id), students!inner(name)")
+    .eq("assignments.space_id", space.id);
+  if (classId) missQ = missQ.eq("assignments.class_id", classId);
+  let examQ = db.from("exams").select("id, exam_type, max_score, exam_results(score)").eq("space_id", space.id);
+  if (classId) examQ = examQ.eq("class_id", classId);
+
   const [enrollRes, sessionRes, missingRes, examRes, clinicRes, noticeRes] = await Promise.all([
-    db.from("enrollments").select("*", { count: "exact", head: true })
-      .eq("space_id", space.id).eq("status", "active"),
-
-    db.from("sessions").select("session_no, title, scheduled_at, classes(title)")
-      .eq("space_id", space.id).order("scheduled_at", { ascending: true }),
-
-    db.from("submissions")
-      .select("status, assignments!inner(title, due_date, space_id), students!inner(name)")
-      .eq("assignments.space_id", space.id).in("status", ["pending", "late"]).limit(200),
-
-    db.from("exams").select("id, exam_type, max_score, exam_results(score)")
-      .eq("space_id", space.id),
-
+    classId
+      ? db.from("class_members").select("*", { count: "exact", head: true }).eq("class_id", classId)
+      : db.from("enrollments").select("*", { count: "exact", head: true }).eq("space_id", space.id).eq("status", "active"),
+    sessQ.order("scheduled_at", { ascending: true }),
+    missQ.in("status", ["pending", "late"]).limit(200),
+    examQ,
     db.from("clinics").select("reason, status, students!inner(name)")
       .eq("space_id", space.id).neq("status", "canceled")
       .order("requested_at", { ascending: false }).limit(6),

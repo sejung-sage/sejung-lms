@@ -31,8 +31,8 @@ async function classOf(spaceId: string, classId: string) {
 }
 
 const paths = (slug: string, classId?: string) => {
-  revalidatePath(`/s/${slug}/admin/classes`);
-  if (classId) revalidatePath(`/s/${slug}/admin/classes/${classId}`);
+  revalidatePath(`/s/${slug}`);
+  if (classId) revalidatePath(`/s/${slug}/c/${classId}`, "layout");
 };
 
 export async function createClass(slug: string, _prev: StaffActionState, form: FormData): Promise<StaffActionState> {
@@ -50,7 +50,7 @@ export async function createClass(slug: string, _prev: StaffActionState, form: F
     return fail(e instanceof Error ? e.message : "강좌를 만들지 못했어요");
   }
   paths(slug);
-  redirect(`/s/${slug}/admin/classes/${id}`);
+  redirect(`/s/${slug}/c/${id}/settings`);
 }
 
 export async function updateClass(slug: string, classId: string, _prev: StaffActionState, form: FormData): Promise<StaffActionState> {

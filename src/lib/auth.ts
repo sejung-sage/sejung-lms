@@ -31,7 +31,11 @@ export function safeNextPath(raw: unknown) {
   return v.startsWith("/") && !v.startsWith("//") && !v.includes("\\") ? v : "/";
 }
 
-export type StaffGrant = { owner: boolean; canGrade: boolean; canManage: boolean };
+export type StaffGrant = {
+  owner: boolean; canGrade: boolean; canManage: boolean;
+  /** 조교는 배정받은 강좌(class_staff)만 본다. 강사·관리자는 공간의 모든 강좌 */
+  assistant: boolean;
+};
 
 export type Viewer = {
   userId: string;
@@ -58,7 +62,7 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
   const [profileRes, ownedRes, staffRes, studentRes, parentRes] = await Promise.all([
     db.from("profiles").select("role, full_name, login_id").eq("id", user.id).maybeSingle(),
     db.from("teacher_spaces").select("id").eq("owner_id", user.id),
-    db.from("space_staff").select("space_id, can_grade, can_manage_students").eq("profile_id", user.id),
+    db.from("space_staff").select("space_id, staff_role, can_grade, can_manage_students").eq("profile_id", user.id),
     db.from("students").select("id").eq("profile_id", user.id).maybeSingle(),
     db.from("parents").select("id, parent_links(student_id)").eq("profile_id", user.id).maybeSingle(),
   ]);
@@ -67,9 +71,9 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
 
   const staff = new Map<string, StaffGrant>();
   for (const s of staffRes.data ?? []) {
-    staff.set(s.space_id, { owner: false, canGrade: s.can_grade, canManage: s.can_manage_students });
+    staff.set(s.space_id, { owner: false, canGrade: s.can_grade, canManage: s.can_manage_students, assistant: s.staff_role === "assistant" });
   }
-  for (const s of ownedRes.data ?? []) staff.set(s.id, { owner: true, canGrade: true, canManage: true });
+  for (const s of ownedRes.data ?? []) staff.set(s.id, { owner: true, canGrade: true, canManage: true, assistant: false });
 
   const parent = parentRes.data as { id: string; parent_links: { student_id: string }[] } | null;
 
@@ -87,7 +91,7 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
 });
 
 export function staffGrant(v: Viewer, spaceId: string): StaffGrant | null {
-  if (v.isAdmin) return { owner: true, canGrade: true, canManage: true };
+  if (v.isAdmin) return { owner: true, canGrade: true, canManage: true, assistant: false };
   return v.staff.get(spaceId) ?? null;
 }
 
@@ -208,4 +212,52 @@ export async function launcherSpaceIds(v: Viewer): Promise<{ ids: Set<string> | 
   await enr(v.childIds, "parent");
   for (const id of v.staff.keys()) { ids.add(id); target.set(id, "admin"); }
   return { ids: v.isAdmin ? "all" : ids, target };
+}
+
+/* ── 강좌 단위 ──────────────────────────────────── */
+
+/** 이 사람이 이 공간에서 볼 수 있는 강좌 — 강사·관리자는 전부("all"), 조교는 배정받은 강좌만 */
+export async function visibleClassIds(v: Viewer, spaceId: string): Promise<"all" | string[]> {
+  const g = staffGrant(v, spaceId);
+  if (!g) return [];
+  if (!g.assistant) return "all";
+  const { data } = await createAdminClient().from("class_staff").select("class_id").eq("space_id", spaceId).eq("profile_id", v.userId);
+  return (data ?? []).map((r) => r.class_id);
+}
+
+export type CourseRef = { id: string; title: string; subject: string | null };
+
+/** 강좌 화면 가드 — 이 공간의 강좌이고, 조교라면 배정받은 강좌여야 한다 */
+export async function requireCourse(space: SpaceDetail, slug: string, classId: string): Promise<{ viewer: Viewer; grant: StaffGrant; course: CourseRef }> {
+  const viewer = await requireStaff(space, slug);
+  const { data } = await createAdminClient().from("classes").select("id, title, subject").eq("id", classId).eq("space_id", space.id).maybeSingle();
+  if (!data) redirect(`/s/${slug}`);
+  const ids = await visibleClassIds(viewer, space.id);
+  if (ids !== "all" && !ids.includes(classId)) redirect(`/s/${slug}`);
+  return { viewer, grant: staffGrant(viewer, space.id)!, course: data };
+}
+
+/** 서버 액션용 — 강좌 접근 가능 여부 */
+export async function canSeeClass(v: Viewer, spaceId: string, classId: string | null): Promise<boolean> {
+  if (!classId) return !!staffGrant(v, spaceId) && !staffGrant(v, spaceId)!.assistant;
+  const ids = await visibleClassIds(v, spaceId);
+  return ids === "all" || ids.includes(classId);
+}
+
+/** 학생이 이 공간에서 듣는 강좌 id */
+export async function studentClassIds(studentId: string, spaceId: string): Promise<string[]> {
+  const { data } = await createAdminClient().from("class_members").select("class_id").eq("student_id", studentId).eq("space_id", spaceId);
+  return (data ?? []).map((r) => r.class_id);
+}
+
+/** 시험 화면 가드 — 강좌 시험이면 그 강좌 접근 권한, 강좌 없는 옛 시험은 강사만 */
+export async function requireExamScope(space: SpaceDetail, slug: string, classId: string | null): Promise<{ grant: StaffGrant; course: CourseRef | null }> {
+  if (classId) {
+    const { grant, course } = await requireCourse(space, slug, classId);
+    return { grant, course };
+  }
+  const v = await requireStaff(space, slug);
+  const grant = staffGrant(v, space.id)!;
+  if (grant.assistant) redirect(`/s/${slug}`);
+  return { grant, course: null };
 }

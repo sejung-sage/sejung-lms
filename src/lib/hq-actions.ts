@@ -179,7 +179,7 @@ export async function hqCreateClass(_prev: StaffActionState, form: FormData): Pr
     return fail(e instanceof Error ? e.message : "개설하지 못했어요");
   }
   revalidatePath("/hq/classes");
-  redirect(`/s/${sp.slug}/admin/classes/${classId}`);
+  redirect(`/s/${sp.slug}/c/${classId}/settings`);
 }
 
 /* ── 계정 관리 ─────────────────────────────────── */

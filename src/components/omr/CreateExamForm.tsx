@@ -8,8 +8,8 @@ import { inputCls, labelCls, Message } from "./fields";
 const initial: ActionState = { ok: false, message: "" };
 
 /** 새 시험 — 만들면 곧바로 그 시험의 정답 입력 화면으로 이동한다 */
-export function CreateExamForm({ slug, today }: { slug: string; today: string }) {
-  const [state, action, pending] = useActionState(createExam.bind(null, slug), initial);
+export function CreateExamForm({ slug, classId, today }: { slug: string; classId: string; today: string }) {
+  const [state, action, pending] = useActionState(createExam.bind(null, slug, classId), initial);
 
   return (
     <form action={action} className="grid gap-3 sm:grid-cols-[2fr_1fr_1fr_1fr_auto] sm:items-end">

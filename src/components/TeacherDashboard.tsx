@@ -1,6 +1,7 @@
 import type { Dashboard } from "@/lib/dashboard";
 import type { SpaceDetail } from "@/lib/spaces";
 import { AdminShell } from "@/components/admin/AdminShell";
+import type { CourseNav } from "@/components/admin/AdminSidebar";
 import { Card, SectionTitle, Badge, cardBase } from "@/components/admin/ui";
 import { ProgressBar, TONE, type Tone } from "@/components/ui/Card";
 
@@ -13,17 +14,22 @@ export function TeacherDashboard({
   space,
   slug,
   data,
+  course,
+  assistant,
 }: {
   space: SpaceDetail;
   slug: string;
   data: Dashboard;
+  /** 강좌 안의 '수업 홈'이면 그 강좌 */
+  course?: CourseNav;
+  assistant?: boolean;
 }) {
   const ongoing = data.todaySessions.filter((s) => s.status === "진행중").length;
 
   /* 토스는 숫자를 다 칠하지 않는다. 기본은 grey-900,
      "지금 손봐야 하는 것"에만 색을 넣는다. */
   const kpis: { label: string; value: string; sub: string; tone?: Tone }[] = [
-    { label: "전체 수강생", value: `${data.studentCount}`, sub: "명" },
+    { label: course ? "수강생" : "전체 수강생", value: `${data.studentCount}`, sub: "명" },
     { label: `${data.sessionsLabel} 수업`, value: `${ongoing}/${data.todaySessions.length}`, sub: "진행중" },
     { label: "숙제 미제출", value: `${data.missingHomework.length}`, sub: "명", tone: "red" },
     { label: "승인 대기", value: `${data.approvals.length}`, sub: "건", tone: "amber" },
@@ -34,8 +40,10 @@ export function TeacherDashboard({
       space={space}
       slug={slug}
       active="dash"
-      title="대시보드"
-      subtitle="학원 운영 현황을 한눈에 확인하세요"
+      course={course}
+      assistant={assistant}
+      title={course ? course.title : "대시보드"}
+      subtitle={course ? "이 강좌의 수업 · 숙제 · 성적 현황" : "학원 운영 현황을 한눈에 확인하세요"}
     >
       {/* KPI */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">

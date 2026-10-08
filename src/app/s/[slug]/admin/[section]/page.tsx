@@ -1,46 +1,32 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getSpaceBySlug } from "@/lib/spaces";
-import { requireStaff } from "@/lib/auth";
+import { requireStaff, staffGrant } from "@/lib/auth";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { AdminSection } from "@/components/admin/AdminSection";
+import { SECTION_META, SPACE_SECTIONS } from "@/components/admin/sections";
 import type { NavKey } from "@/components/admin/AdminSidebar";
-import type { ClassParams } from "@/components/classes/ClassFilters";
 
 export const dynamic = "force-dynamic";
 
-const META: Record<string, { key: NavKey; title: string; subtitle: string }> = {
-  attendance: { key: "attendance", title: "출석 관리", subtitle: "등원 QR·수기 출결을 확인하세요" },
-  homework: { key: "homework", title: "숙제 관리", subtitle: "주차별 숙제 제출 현황" },
-  todos: { key: "todos", title: "할 일 관리", subtitle: "재시험·제출·클리닉 예약 미완료 목록" },
-  clinic: { key: "clinic", title: "클리닉 예약", subtitle: "예약·등원·하원·피드백 현황" },
-  makeup: { key: "makeup", title: "보강 관리", subtitle: "결석자 보강 배정" },
-  classes: { key: "classes", title: "강좌 관리", subtitle: "강좌 개설 · 강좌별 수강생 · 담당 조교" },
-  students: { key: "students", title: "학생 목록", subtitle: "재원생 · 학부모 리포트 링크 · 로그인 계정" },
-  approvals: { key: "approvals", title: "계정 승인", subtitle: "앱 가입·예약 승인 큐" },
-  grades: { key: "grades", title: "성적", subtitle: "주간 성적·총괄시험 집계" },
-  omr: { key: "omr", title: "OMR 채점", subtitle: "정답 등록 · 학생 제출 · 조교 대리 입력" },
-  videos: { key: "videos", title: "영상 관리", subtitle: "강의 영상 업로드·배정" },
-};
-
-export default async function AdminSectionPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ slug: string; section: string }>;
-  searchParams: Promise<ClassParams>;
-}) {
+/**
+ * 강사 공간 단위 화면 — 학생(전체 명단·계정·리포트 링크) · 승인 · 영상.
+ * 출석·숙제·성적·OMR 같은 수업 운영은 강좌 안(/s/{slug}/c/{classId})으로 옮겼다 — 옛 주소는 강좌 목록으로 보낸다.
+ */
+export default async function AdminSectionPage({ params }: { params: Promise<{ slug: string; section: string }> }) {
   const { slug, section } = await params;
-  const sp = await searchParams;
-  const meta = META[section];
-  if (!meta) notFound();
-
   const space = await getSpaceBySlug(slug);
   if (!space) notFound();
-  await requireStaff(space, slug);
+  const viewer = await requireStaff(space, slug);
+
+  if (!SPACE_SECTIONS.has(section)) redirect(`/s/${slug}`);
+  const assistant = !!staffGrant(viewer, space.id)?.assistant;
+  // 조교는 배정받은 강좌 안에서만 일한다 — 공간 전체 학생 명단은 강사 몫
+  if (assistant) redirect(`/s/${slug}`);
+  const meta = SECTION_META[section];
 
   return (
     <AdminShell space={space} slug={slug} active={meta.key} title={meta.title} subtitle={meta.subtitle}>
-      <AdminSection section={meta.key as Exclude<NavKey, "dash">} space={space} slug={slug} params={sp} />
+      <AdminSection section={meta.key as Exclude<NavKey, "dash">} space={space} slug={slug} />
     </AdminShell>
   );
 }

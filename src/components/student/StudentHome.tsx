@@ -39,12 +39,14 @@ const InfoRow = ({ label, value }: { label: string; value: string }) => (
   </div>
 );
 
-export function StudentHome({ space, slug, data, preview }: { space: SpaceDetail; slug: string; data: StudentHomeData; preview?: boolean }) {
+export function StudentHome({
+  space, slug, data, preview, course,
+}: { space: SpaceDetail; slug: string; data: StudentHomeData; preview?: boolean; course: { id: string; title: string } }) {
   const w = data.thisWeek;
   const doneCount = data.todos.filter((h) => h.done).length;
 
   return (
-    <StudentFrame space={space} slug={slug} active="home" preview={preview}>
+    <StudentFrame space={space} slug={slug} active="home" preview={preview} pageLabel={course.title} backHref={`/s/${slug}/student`}>
       {/* 오늘/이번 주 수업 — 토스 메인 카드처럼 흰 배경 + 큰 볼드 + 파란 CTA 하나 */}
       <Card>
         <div className="flex items-start justify-between gap-3">
@@ -70,7 +72,7 @@ export function StudentHome({ space, slug, data, preview }: { space: SpaceDetail
         </Button>
       </Card>
 
-      <OmrEntry slug={slug} />
+      <OmrEntry slug={slug} classId={course.id} />
 
       {/* 이번 주 현황 */}
       <SectionHeading>이번 주 현황</SectionHeading>

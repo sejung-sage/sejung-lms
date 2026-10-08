@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { getSpaceBySlug } from "@/lib/spaces";
-import { requireStaff } from "@/lib/auth";
+import { requireStaff, requireExamScope } from "@/lib/auth";
 import { getOmrExamDetail, type OmrQuestion } from "@/lib/omr";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Card } from "@/components/ui/Card";
@@ -42,11 +42,15 @@ export default async function OmrExamPage({
 
   const detail = await getOmrExamDetail(space, examId);
   if (!detail) notFound();
+  const { course, grant } = await requireExamScope(space, slug, detail.exam.classId);
+  const omrHome = course ? `/s/${slug}/c/${course.id}/omr` : `/s/${slug}`;
   const { exam, questions, submissions } = detail;
   const pts = pointsOf(questions);
 
   return (
     <AdminShell
+      course={course ?? undefined}
+      assistant={grant.assistant}
       space={space}
       slug={slug}
       active="omr"
@@ -54,7 +58,7 @@ export default async function OmrExamPage({
       subtitle="OMR 채점 · 정답 등록 → 학생 제출 또는 조교 대리 입력"
       actions={
         <>
-          <ButtonLink href={`/s/${slug}/admin/omr`} variant="ghost" size="sm">목록</ButtonLink>
+          <ButtonLink href={omrHome} variant="ghost" size="sm">목록</ButtonLink>
           <ButtonLink href={`/s/${slug}/admin/omr/${exam.id}/sheets`} variant="secondary" size="sm">답안지 인쇄</ButtonLink>
           <ButtonLink href={`/s/${slug}/admin/omr/${exam.id}/scan`} variant="secondary" size="sm">스캔 올리기</ButtonLink>
           <OmrOpenToggle slug={slug} exam={exam} questionCount={questions.length} />

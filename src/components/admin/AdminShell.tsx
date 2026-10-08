@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { SpaceDetail } from "@/lib/spaces";
-import { AdminSidebar, type NavKey } from "./AdminSidebar";
+import { AdminSidebar, navItems, type NavKey, type CourseNav } from "./AdminSidebar";
 import { ButtonLink } from "@/components/ui/Button";
 import { signOut } from "@/app/login/actions";
 
@@ -10,19 +10,6 @@ import { signOut } from "@/app/login/actions";
  * 표면 규칙 — 크롬(레일/헤더)은 흰색, 본문은 --panel(grey-50), 그 위에 흰 카드.
  * 흰 위에 흰을 얹으면 카드 경계가 사라지므로 본문만 회색으로 내린다.
  */
-
-const MOBILE_NAV: { key: NavKey; label: string; path: string }[] = [
-  { key: "dash", label: "대시보드", path: "" },
-  { key: "attendance", label: "출석", path: "/admin/attendance" },
-  { key: "homework", label: "숙제", path: "/admin/homework" },
-  { key: "makeup", label: "보강", path: "/admin/makeup" },
-  { key: "classes", label: "강좌", path: "/admin/classes" },
-  { key: "students", label: "학생", path: "/admin/students" },
-  { key: "approvals", label: "승인", path: "/admin/approvals" },
-  { key: "grades", label: "성적", path: "/admin/grades" },
-  { key: "omr", label: "OMR", path: "/admin/omr" },
-  { key: "videos", label: "영상", path: "/admin/videos" },
-];
 
 /** 헤더와 본문이 같은 폭·같은 좌우 여백을 쓴다.
     상한을 두는 이유: 1920px 에서 표 한 줄이 1800px 까지 늘어나면
@@ -36,9 +23,15 @@ export function AdminShell({
   title,
   subtitle,
   actions,
+  course,
+  assistant = false,
   children,
 }: {
   space: SpaceDetail;
+  /** 강좌 안이면 그 강좌 — 메뉴가 강좌 메뉴로 바뀐다 */
+  course?: CourseNav;
+  /** 조교면 공간 메뉴에서 강좌 말고는 숨긴다 */
+  assistant?: boolean;
   slug: string;
   active: NavKey;
   title: string;
@@ -58,6 +51,8 @@ export function AdminShell({
         accent={accent}
         initial={initial}
         active={active}
+        course={course}
+        assistant={assistant}
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
@@ -75,7 +70,7 @@ export function AdminShell({
                   <h1 className="truncate text-[19px] font-bold text-grey-900">{title}</h1>
                   <span className="hidden truncate text-[13px] text-grey-500 sm:inline">
                     {space.name}
-                    {space.subject ? ` · ${space.subject}` : ""}
+                    {course ? ` · ${course.title}` : space.subject ? ` · ${space.subject}` : ""}
                   </span>
                 </div>
                 {subtitle && <p className="truncate text-[12.5px] text-grey-500">{subtitle}</p>}
@@ -103,12 +98,17 @@ export function AdminShell({
 
           {/* 레일이 사라지는 좁은 화면에서의 대체 내비 */}
           <nav className={`${INNER} flex gap-1.5 overflow-x-auto pb-2.5 md:hidden`}>
-            {MOBILE_NAV.map((n) => {
+            {course && (
+              <Link href={`/s/${slug}`} className="pressable shrink-0 rounded-full bg-grey-100 px-3 py-1.5 text-[13px] font-semibold text-grey-700">
+                ← 강좌 목록
+              </Link>
+            )}
+            {navItems(slug, course, assistant).flat().map((n) => {
               const on = n.key === active;
               return (
                 <Link
                   key={n.key}
-                  href={`/s/${slug}${n.path}`}
+                  href={n.href}
                   aria-current={on ? "page" : undefined}
                   className={`pressable shrink-0 rounded-full px-3 py-1.5 text-[13px] font-semibold transition-colors ${
                     on ? "bg-blue-500 text-white" : "bg-grey-100 text-grey-700"

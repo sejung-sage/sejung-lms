@@ -28,6 +28,8 @@ export type OmrData = {
 export type OmrQuestion = GradeQuestion & { choices: string[] };
 
 export type OmrExamMeta = {
+  /** 강좌 시험이면 그 강좌 — 수강생·조교 범위가 여기서 정해진다 */
+  classId: string | null;
   id: string;
   spaceId: string;
   title: string;
@@ -41,10 +43,10 @@ export type OmrExamMeta = {
 };
 
 const EXAM_COLS =
-  "id, space_id, title, exam_type, exam_date, max_score, cutoff_score, omr_open, score_status, stats";
+  "id, space_id, class_id, title, exam_type, exam_date, max_score, cutoff_score, omr_open, score_status, stats";
 
 type ExamRow = {
-  id: string; space_id: string; title: string; exam_type: string | null; exam_date: string | null;
+  id: string; space_id: string; class_id: string | null; title: string; exam_type: string | null; exam_date: string | null;
   max_score: number | null; cutoff_score: number | null; omr_open: boolean; score_status: string;
   stats: OmrExamMeta["stats"] | null;
 };
@@ -52,6 +54,7 @@ type ExamRow = {
 const toMeta = (e: ExamRow): OmrExamMeta => ({
   id: e.id,
   spaceId: e.space_id,
+  classId: e.class_id,
   title: e.title,
   examType: e.exam_type,
   examDate: e.exam_date,
@@ -94,12 +97,11 @@ export const DEFAULT_CHOICES = ["1", "2", "3", "4", "5"];
 type RosterRow = { id: string; name: string; school: string | null };
 
 /** 이 공간에 지금 다니는 학생 — 대리 입력 대상 */
-async function activeRoster(spaceId: string): Promise<RosterRow[]> {
-  const { data } = await db()
-    .from("enrollments")
-    .select("students!inner(id, name, school)")
-    .eq("space_id", spaceId)
-    .eq("status", "active");
+/** 강좌 시험이면 그 강좌 수강생, 아니면 공간 재원생 */
+async function activeRoster(spaceId: string, classId?: string | null): Promise<RosterRow[]> {
+  const { data } = classId
+    ? await db().from("class_members").select("students!inner(id, name, school)").eq("class_id", classId)
+    : await db().from("enrollments").select("students!inner(id, name, school)").eq("space_id", spaceId).eq("status", "active");
   const rows = (data ?? []).flatMap((r: { students: RosterRow | RosterRow[] }) =>
     Array.isArray(r.students) ? r.students : [r.students],
   );
@@ -114,17 +116,14 @@ async function activeRoster(spaceId: string): Promise<RosterRow[]> {
 
 export type OmrExamListRow = OmrExamMeta & { questionCount: number; submitted: number; roster: number };
 
-export async function getOmrExamList(space: SpaceDetail): Promise<OmrExamListRow[]> {
+export async function getOmrExamList(space: SpaceDetail, classId?: string): Promise<OmrExamListRow[]> {
   if (!omrAvailable || !space.id) return [];
 
+  let q = db().from("exams").select(`${EXAM_COLS}, exam_questions(count), exam_results(score)`).eq("space_id", space.id);
+  if (classId) q = q.eq("class_id", classId);
   const [examRes, roster] = await Promise.all([
-    db()
-      .from("exams")
-      .select(`${EXAM_COLS}, exam_questions(count), exam_results(score)`)
-      .eq("space_id", space.id)
-      .order("exam_date", { ascending: false, nullsFirst: true })
-      .limit(60),
-    activeRoster(space.id),
+    q.order("exam_date", { ascending: false, nullsFirst: true }).limit(60),
+    activeRoster(space.id, classId),
   ]);
 
   type Row = ExamRow & { exam_questions: { count: number }[]; exam_results: { score: number | null }[] };
@@ -155,7 +154,7 @@ export async function getOmrExamDetail(space: SpaceDetail, examId: string) {
 
   const [questions, roster, resultRes] = await Promise.all([
     getQuestions(examId),
-    activeRoster(space.id),
+    activeRoster(space.id, exam.classId),
     db().from("exam_results").select("student_id, score, omr_data, graded_at").eq("exam_id", examId),
   ]);
 
@@ -190,15 +189,20 @@ export type StudentOmrRow = {
   submittedAt: string | null;
 };
 
-export async function getStudentOmrList(space: SpaceDetail, viewer: { id: string; name: string }) {
+export async function getStudentOmrList(space: SpaceDetail, viewer: { id: string; name: string }, classId?: string) {
   if (!omrAvailable || !space.id) return null;
   const client = db();
 
+  // 내가 듣는 강좌의 시험만 (강좌 화면이면 그 강좌만)
+  const memberRes = await client.from("class_members").select("class_id").eq("student_id", viewer.id).eq("space_id", space.id);
+  const myClasses = (memberRes.data ?? []).map((r) => r.class_id).filter((id) => !classId || id === classId);
+  if (!myClasses.length) return { viewer, rows: [] };
   const { data } = await client
     .from("exams")
     .select("id, title, exam_date, exam_questions(count), exam_results(student_id, score, omr_data)")
     .eq("space_id", space.id)
     .eq("omr_open", true)
+    .in("class_id", myClasses)
     .order("exam_date", { ascending: false });
 
   type Row = {
@@ -228,6 +232,10 @@ export async function getStudentOmrSheet(space: SpaceDetail, examId: string, vie
   const client = db();
   const exam = await getExamInSpace(space.id, examId);
   if (!exam) return null;
+  if (exam.classId) {
+    const { data: m } = await client.from("class_members").select("id").eq("class_id", exam.classId).eq("student_id", viewer.id).maybeSingle();
+    if (!m) return null;
+  }
 
   const [questions, resultRes] = await Promise.all([
     getQuestions(examId, client),

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import QRCode from "qrcode";
 import { getSpaceBySlug } from "@/lib/spaces";
-import { requireStaff } from "@/lib/auth";
+import { requireStaff, requireExamScope } from "@/lib/auth";
 import { getOmrExamDetail } from "@/lib/omr";
 import {
   PAGE, FIDUCIAL, FIDUCIALS, QR_BOX, GRID, MAX_QUESTIONS, rowOf, bubbleCenter, encodeSheetQr,
@@ -34,6 +34,7 @@ export default async function OmrSheetsPage({
   await requireStaff(space, slug);
   const detail = await getOmrExamDetail(space, examId);
   if (!detail) notFound();
+  await requireExamScope(space, slug, detail.exam.classId);
 
   const { exam, questions, submissions } = detail;
   const students = student ? submissions.filter((s) => s.studentId === student) : submissions;

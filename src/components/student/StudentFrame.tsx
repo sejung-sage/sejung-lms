@@ -1,15 +1,18 @@
+import Link from "next/link";
 import type { SpaceDetail } from "@/lib/spaces";
 import { StudentTabBar, type StudentTab } from "./StudentTabBar";
 import { ButtonLink } from "@/components/ui/Button";
 
 /** 학생 앱 공용 프레임: 상단바 + 콘텐츠 + 하단 탭. */
 export function StudentFrame({
-  space, slug, active, pageLabel, preview = false, children,
+  space, slug, active, pageLabel, preview = false, backHref, children,
 }: {
   space: SpaceDetail;
   slug: string;
   active: StudentTab;
   pageLabel?: string;
+  /** 강좌 안이면 강좌 목록으로 돌아가는 화살표 */
+  backHref?: string;
   /** 운영진이 학생 화면을 들여다보는 중 — 관리자 뷰 버튼과 안내 띠를 보여준다 */
   preview?: boolean;
   children: React.ReactNode;
@@ -21,15 +24,20 @@ export function StudentFrame({
     <div className="flex min-h-dvh w-full min-w-0 justify-center bg-white sm:bg-grey-100">
       <div className="flex min-h-dvh w-full min-w-0 max-w-md flex-col border-grey-200 bg-white sm:border-x">
       <header className="sticky top-0 z-10 flex items-center justify-between border-b border-grey-100 bg-white/95 px-5 pb-3 pt-5 backdrop-blur-sm">
-        <div className="flex items-center gap-2.5">
+        <div className="flex min-w-0 items-center gap-2.5">
+          {backHref && (
+            <Link href={backHref} aria-label="내 강좌로" className="-ml-1.5 flex size-8 shrink-0 items-center justify-center rounded-full text-grey-600 hover:bg-grey-100">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+            </Link>
+          )}
           <div
-            className="flex size-9 items-center justify-center rounded-md text-[14px] font-bold text-white"
+            className="flex size-9 shrink-0 items-center justify-center rounded-md text-[14px] font-bold text-white"
             style={{ backgroundColor: accent }}
           >
             {initial}
           </div>
-          <div className="leading-tight">
-            <div className="text-[17px] font-bold text-grey-900">
+          <div className="min-w-0 leading-tight">
+            <div className="truncate text-[17px] font-bold text-grey-900">
               {pageLabel ?? space.name}
             </div>
             <div className="text-[12px] text-grey-500">{space.subject} · 학생</div>

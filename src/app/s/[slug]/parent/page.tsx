@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getSpaceBySlug } from "@/lib/spaces";
 import { parentContext } from "@/lib/auth";
 import { getParentHome } from "@/lib/parent";
@@ -12,6 +12,8 @@ export default async function ParentPage({ params }: { params: Promise<{ slug: s
   if (!space) notFound();
 
   const ctx = await parentContext(space, slug);
+  // 학부모 본인은 자녀 중심 화면으로 — 이 주소는 운영진 미리보기용으로 남긴다
+  if (!ctx.preview) redirect(`/parent?child=${ctx.child.id}`);
   const data = await getParentHome(space, ctx.child, ctx.children);
   if (!data) notFound();
 

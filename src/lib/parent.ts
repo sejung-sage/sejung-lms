@@ -21,6 +21,8 @@ export async function getParentHome(
   space: SpaceDetail,
   forChild: { id: string; name: string },
   siblings: { id: string; name: string }[] = [],
+  /** 강좌 리포트면 그 강좌만 — 다른 강좌 시험이 한 그래프에 섞이지 않게 */
+  classId?: string,
 ): Promise<ParentHome | null> {
   if (useMock) return mockParentHome(space);
   if (!space.id) return null;
@@ -31,13 +33,19 @@ export async function getParentHome(
   const child = forChild;
   const children = siblings.length ? siblings : [forChild];
 
+  let examQ = db.from("exams").select("title, max_score, exam_date, exam_results(student_id, score)").eq("space_id", space.id);
+  let asgQ = db.from("assignments").select("id, due_date, submissions(student_id, status)").eq("space_id", space.id);
+  let attQ = db.from("attendance").select("status, marked_at, sessions!inner(session_no, class_id)")
+    .eq("space_id", space.id).eq("student_id", child.id);
+  if (classId) {
+    examQ = examQ.eq("class_id", classId);
+    asgQ = asgQ.eq("class_id", classId);
+    attQ = attQ.eq("sessions.class_id", classId);
+  }
   const [examRes, asgRes, attRes] = await Promise.all([
-    db.from("exams").select("title, max_score, exam_date, exam_results(student_id, score)")
-      .eq("space_id", space.id).order("exam_date", { ascending: true }),
-    db.from("assignments").select("id, due_date, submissions(student_id, status)").eq("space_id", space.id),
-    db.from("attendance").select("status, marked_at, sessions!inner(session_no)")
-      .eq("space_id", space.id).eq("student_id", child.id)
-      .order("marked_at", { ascending: false, nullsFirst: false }).limit(1),
+    examQ.order("exam_date", { ascending: true }),
+    asgQ,
+    attQ.order("marked_at", { ascending: false, nullsFirst: false }).limit(1),
   ]);
 
   type ExamRow = { title: string; max_score: number | null; exam_date: string | null; exam_results: { student_id: string; score: number | null }[] };

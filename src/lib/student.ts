@@ -26,12 +26,13 @@ function percentileOf(score: number, all: number[]): number {
 const one = <T,>(v: T | T[] | null): T | null => (Array.isArray(v) ? (v[0] ?? null) : v);
 
 /** 시험 + 그 시험의 전체 점수를, 응시일 순으로 */
-async function examHistory(db: Db, spaceId: string, studentId: string) {
-  const { data } = await db
+async function examHistory(db: Db, spaceId: string, studentId: string, classId?: string) {
+  let q = db
     .from("exams")
     .select("id, title, exam_type, max_score, exam_date, exam_results(student_id, score)")
-    .eq("space_id", spaceId)
-    .order("exam_date", { ascending: true });
+    .eq("space_id", spaceId);
+  if (classId) q = q.eq("class_id", classId);
+  const { data } = await q.order("exam_date", { ascending: true });
 
   type Row = {
     id: string; title: string; exam_type: string | null; max_score: number | null; exam_date: string | null;
@@ -63,7 +64,8 @@ function mineOnly<T extends { submissions: { student_id: string }[] | null }>(ro
   return rows.filter((a) => (a.submissions ?? []).some((s) => s.student_id === studentId));
 }
 
-export async function getStudentHome(space: SpaceDetail, viewer: Viewer): Promise<StudentHome | null> {
+/** 강좌 하나의 학생 홈 — 이번 수업 · 숙제 · 테스트 · 할 일이 전부 이 강좌 것 */
+export async function getStudentHome(space: SpaceDetail, viewer: Viewer, classId: string): Promise<StudentHome | null> {
   if (useMock) return mockStudentHome(space);
   if (!space.id) return null;
 
@@ -72,16 +74,17 @@ export async function getStudentHome(space: SpaceDetail, viewer: Viewer): Promis
   const subject = space.subject ?? "정규";
   const now = Date.now();
 
-  const [sessionRes, asgRes, todoRes, noticeRes, exams] = await Promise.all([
+  const [sessionRes, asgRes, todoRes, noticeRes, exams, clsRes] = await Promise.all([
     db.from("sessions").select("session_no, title, scheduled_at, concept_tags, classes(title, description)")
-      .eq("space_id", space.id).order("scheduled_at", { ascending: true }),
+      .eq("space_id", space.id).eq("class_id", classId).order("scheduled_at", { ascending: true }),
     db.from("assignments").select("id, title, description, due_date, submissions(student_id, status)")
-      .eq("space_id", space.id).order("due_date", { ascending: false }).limit(6),
+      .eq("space_id", space.id).eq("class_id", classId).order("due_date", { ascending: false }).limit(12),
     db.from("todos").select("kind, title, due_at, state")
-      .eq("space_id", space.id).eq("student_id", viewer.id).order("state", { ascending: true }).order("due_at", { ascending: true }).limit(6),
+      .eq("space_id", space.id).eq("class_id", classId).eq("student_id", viewer.id).order("state", { ascending: true }).order("due_at", { ascending: true }).limit(6),
     db.from("notices").select("title, body, created_at")
       .eq("space_id", space.id).order("created_at", { ascending: false }).limit(1),
-    examHistory(db, space.id, viewer.id),
+    examHistory(db, space.id, viewer.id, classId),
+    db.from("classes").select("kind, slots").eq("id", classId).maybeSingle(),
   ]);
 
   /* ── 이번 주 수업: 지금과 가장 가까운(아직 안 지난) 차시 ── */
@@ -143,13 +146,14 @@ export async function getStudentHome(space: SpaceDetail, viewer: Viewer): Promis
   const last = exams[exams.length - 1];
   const notice = one(noticeRes.data ?? null);
 
+  const slot = ((clsRes.data?.slots ?? []) as { room_name: string | null }[])[0];
   return {
     studentName: viewer.name,
     thisWeek: {
-      tag: "정규수업",
+      tag: clsRes.data?.kind === "special" ? "특강" : "정규수업",
       title: `이번 주 진도 · ${cur?.concept_tags?.[0] ?? cur?.title ?? "핵심 개념 정리"}`,
-      className: `${subject} ${cur?.session_no ?? 1}회차`,
-      location: cls?.description ?? "세정학원 대치",
+      className: `${cls?.title ?? subject} ${cur?.session_no ?? 1}회차`,
+      location: slot?.room_name ?? cls?.description ?? "세정학원 대치",
       week: `${cur?.session_no ?? 1}주차`,
       time: at ? fmt(at) : "일정 미정",
     },
@@ -176,15 +180,17 @@ export async function getStudentHome(space: SpaceDetail, viewer: Viewer): Promis
   };
 }
 
-export async function getStudentGrade(space: SpaceDetail, viewer: Viewer): Promise<StudentGrade | null> {
+export async function getStudentGrade(space: SpaceDetail, viewer: Viewer, classId?: string): Promise<StudentGrade | null> {
   if (useMock) return mockStudentGrade(space);
   if (!space.id) return null;
 
   const db = createAdminClient();
 
+  let asgQ = db.from("assignments").select("id, title, due_date, submissions(student_id, status)").eq("space_id", space.id);
+  if (classId) asgQ = asgQ.eq("class_id", classId);
   const [exams, asgRes] = await Promise.all([
-    examHistory(db, space.id, viewer.id),
-    db.from("assignments").select("id, title, due_date, submissions(student_id, status)").eq("space_id", space.id),
+    examHistory(db, space.id, viewer.id, classId),
+    asgQ,
   ]);
 
   // 100점 환산 — 시험마다 만점이 다르면 추이 그래프가 거짓말을 한다
@@ -218,3 +224,58 @@ export async function getStudentGrade(space: SpaceDetail, viewer: Viewer): Promi
 }
 
 export type { StudentHome, StudentGrade };
+
+/* ── 학생: 이 강사에게서 듣는 강좌 목록 ──────────── */
+
+export type StudentCourse = {
+  id: string; title: string; kind: "regular" | "special";
+  slots: { weekday: string; start_time: string; end_time: string; room_name: string | null }[];
+  next: string | null; lastTest: { title: string; score: number; max: number } | null;
+  homework: { done: number; total: number }; openTodos: number;
+};
+
+export async function getStudentCourses(space: SpaceDetail, viewer: Viewer): Promise<StudentCourse[]> {
+  if (!space.id) return [];
+  const db = createAdminClient();
+  const { data: mem } = await db.from("class_members").select("class_id").eq("space_id", space.id).eq("student_id", viewer.id);
+  const ids = (mem ?? []).map((m) => m.class_id);
+  if (!ids.length) return [];
+  const [clsRes, sesRes, examRes, asgRes, todoRes] = await Promise.all([
+    db.from("classes").select("id, title, kind, slots, is_closed").in("id", ids).order("is_closed").order("title"),
+    db.from("sessions").select("class_id, scheduled_at").in("class_id", ids).order("scheduled_at"),
+    db.from("exams").select("class_id, title, max_score, exam_date, exam_results!inner(score, student_id)").in("class_id", ids).eq("exam_results.student_id", viewer.id).order("exam_date"),
+    db.from("assignments").select("class_id, due_date, submissions!inner(status, student_id)").in("class_id", ids).eq("submissions.student_id", viewer.id),
+    db.from("todos").select("class_id").in("class_id", ids).eq("student_id", viewer.id).eq("state", "open"),
+  ]);
+  const now = Date.now();
+  const today = new Date().toISOString().slice(0, 10);
+  type E = { class_id: string; title: string; max_score: number | null; exam_results: { score: number | null }[] };
+  type A = { class_id: string; due_date: string | null; submissions: { status: string }[] };
+  return (clsRes.data ?? []).map((c) => {
+    const next = (sesRes.data ?? []).find((x) => x.class_id === c.id && x.scheduled_at && new Date(x.scheduled_at).getTime() >= now - 3 * 3600_000);
+    const tests = ((examRes.data ?? []) as E[]).filter((e) => e.class_id === c.id && e.exam_results?.[0]?.score != null);
+    const t = tests[tests.length - 1];
+    const asg = ((asgRes.data ?? []) as A[]).filter((a) => a.class_id === c.id && (a.due_date ?? "") <= today);
+    return {
+      id: c.id, title: c.title, kind: c.kind, slots: c.slots ?? [],
+      next: next?.scheduled_at ?? null,
+      lastTest: t ? { title: t.title, score: Number(t.exam_results[0].score), max: Number(t.max_score ?? 100) } : null,
+      homework: { done: asg.filter((a) => ["submitted", "late"].includes(a.submissions?.[0]?.status)).length, total: asg.length },
+      openTodos: (todoRes.data ?? []).filter((x) => x.class_id === c.id).length,
+    };
+  });
+}
+
+/** 학생 홈 아래 '오늘 할 일' — 이 강사 공간의 내 할 일 전부(강좌 이름과 함께) */
+export async function getStudentTodos(space: SpaceDetail, viewer: Viewer) {
+  if (!space.id) return [];
+  const { data } = await createAdminClient().from("todos").select("kind, title, due_at, state, classes(title)")
+    .eq("space_id", space.id).eq("student_id", viewer.id).eq("state", "open").order("due_at", { ascending: true }).limit(8);
+  const label: Record<string, string> = { retake: "재시험", online_submit: "온라인 제출", clinic_reserve: "클리닉 예약", assignment: "과제", survey: "설문", custom: "할 일" };
+  type R = { kind: string; title: string; due_at: string | null; classes: { title: string } | { title: string }[] | null };
+  return ((data ?? []) as R[]).map((t) => ({
+    title: t.title,
+    sub: `${label[t.kind] ?? "할 일"}${t.due_at ? ` · ${t.due_at.slice(5, 10)}까지` : ""}`,
+    course: one(t.classes)?.title ?? null,
+  }));
+}
